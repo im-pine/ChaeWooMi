@@ -1,0 +1,84 @@
+import { describe, expect, it } from 'vitest';
+import { createConnection, type NativePort } from '@/lib/connection';
+import type { ConnectionState } from '@/lib/native';
+
+/** 메시지 · 끊김을 직접 일으킬 수 있는 가짜 포트 */
+function fakePort() {
+  const messageListeners: ((message: unknown) => void)[] = [];
+  const disconnectListeners: (() => void)[] = [];
+  const port = {
+    posted: [] as unknown[],
+    disconnected: false,
+    postMessage(message: unknown) {
+      port.posted.push(message);
+    },
+    disconnect() {
+      port.disconnected = true;
+    },
+    onMessage: {
+      addListener: (listener: (message: unknown) => void) => messageListeners.push(listener),
+    },
+    onDisconnect: { addListener: (listener: () => void) => disconnectListeners.push(listener) },
+    receive: (message: unknown) => messageListeners.forEach((listener) => listener(message)),
+    drop: () => disconnectListeners.forEach((listener) => listener()),
+  };
+  return port;
+}
+
+function setup(lastError?: string) {
+  const ports: ReturnType<typeof fakePort>[] = [];
+  const states: ConnectionState[] = [];
+  const connection = createConnection({
+    connectNative: (): NativePort => {
+      const port = fakePort();
+      ports.push(port);
+      return port;
+    },
+    lastErrorMessage: () => lastError,
+    extensionVersion: '0.1.0',
+    onState: (state) => states.push(state),
+  });
+  return { connection, ports, states };
+}
+
+describe('앱 연결 관리', () => {
+  it('연결하면 hello를 보내고, ack를 받으면 연결됨', () => {
+    const { connection, ports, states } = setup();
+    connection.connect();
+    ports[0]?.receive({ type: 'ack', appVersion: '0.2.0' });
+    expect(ports[0]?.posted).toEqual([{ type: 'hello', extensionVersion: '0.1.0' }]);
+    expect(states.at(-1)).toEqual({ kind: 'connected', appVersion: '0.2.0' });
+  });
+
+  it('다시 연결하면 이전 포트를 닫는다', () => {
+    const { connection, ports } = setup();
+    connection.connect();
+    connection.connect();
+    expect(ports[0]?.disconnected).toBe(true);
+    expect(ports[1]?.disconnected).toBe(false);
+  });
+
+  it('이전 포트의 늦은 끊김 · 메시지는 새 연결 상태를 덮어쓰지 않는다', () => {
+    const { connection, ports, states } = setup('Native host has exited.');
+    connection.connect();
+    connection.connect();
+    ports[1]?.receive({ type: 'ack', appVersion: '0.1.0' });
+    ports[0]?.drop();
+    ports[0]?.receive({ type: 'ack', appVersion: '9.9.9' });
+    expect(states.at(-1)).toEqual({ kind: 'connected', appVersion: '0.1.0' });
+  });
+
+  it('현재 포트가 끊기면 원인별 상태가 된다', () => {
+    const { connection, ports, states } = setup('Specified native messaging host not found.');
+    connection.connect();
+    ports[0]?.drop();
+    expect(states.at(-1)).toEqual({ kind: 'hostNotInstalled' });
+  });
+
+  it('모르는 메시지는 무시한다', () => {
+    const { connection, ports, states } = setup();
+    connection.connect();
+    ports[0]?.receive({ type: 'unknown' });
+    expect(states).toEqual([{ kind: 'connecting' }]);
+  });
+});
