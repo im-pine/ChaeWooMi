@@ -15,6 +15,8 @@ final class LauncherController {
     /// 패널을 띄우지 못하면 false
     @discardableResult
     func show() -> Bool {
+        // 실행 순간 화면이 없어도(클램셸 등) 나중에 모니터가 연결되면 다시 놓도록 먼저 감시한다
+        observeScreens()
         let shown = place()
         failed = !shown
         return shown
@@ -27,7 +29,6 @@ final class LauncherController {
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
         self.panel = panel
-        observeScreens()
         return panel.isVisible
     }
 
