@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+jobs:
+  swift:
+    name: Swift (앱 · Core)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen · SwiftLint
+        run: brew install xcodegen swiftlint
+      - name: SwiftLint
+        run: swiftlint
+      - name: Core 테스트
+        run: swift test --package-path app/Core
+      - name: 앱 빌드
+        working-directory: app
+        run: |
+          xcodegen generate
+          xcodebuild -project ChaeWooMi.xcodeproj -scheme ChaeWooMi -destination 'platform=macOS' build CODE_SIGNING_ALLOWED=NO
+
+  extension:
+    name: 확장 (TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format
+      - run: pnpm test
+      - run: pnpm --filter chaewoomi-extension build

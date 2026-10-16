@@ -1,0 +1,18 @@
+included:
+  - app/ChaeWooMi
+  - app/Host
+  - app/Core/Sources
+  - app/Core/Tests
+excluded:
+  - app/Core/.build
+
+# 함수 하나 = 한 가지 일 신호 (R-SRP-01). 경고만 하고 막지 않는다.
+function_body_length:
+  warning: 40
+  error: 200
+cyclomatic_complexity:
+  warning: 10
+  error: 50
+
+identifier_name:
+  excluded: [id, x, y]

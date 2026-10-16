@@ -1,0 +1,49 @@
+name: ChaeWooMi
+options:
+  bundleIdPrefix: com.impine
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+packages:
+  ChaeWooMiCore:
+    path: Core
+targets:
+  ChaeWooMi:
+    type: application
+    platform: macOS
+    sources: [ChaeWooMi]
+    dependencies:
+      - package: ChaeWooMiCore
+      - target: chaewoomi-host
+        embed: false
+    info:
+      path: ChaeWooMi/Info.plist
+      properties:
+        CFBundleDisplayName: 채우미
+        LSApplicationCategoryType: public.app-category.productivity
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.impine.chaewoomi
+        GENERATE_INFOPLIST_FILE: false
+    postBuildScripts:
+      - name: Copy Native Messaging host
+        script: |
+          mkdir -p "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}"
+          cp "${BUILT_PRODUCTS_DIR}/chaewoomi-host" "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/chaewoomi-host"
+        basedOnDependencyAnalysis: false
+  chaewoomi-host:
+    type: tool
+    platform: macOS
+    sources: [Host]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.impine.chaewoomi.host
+schemes:
+  ChaeWooMi:
+    build:
+      targets:
+        ChaeWooMi: all
