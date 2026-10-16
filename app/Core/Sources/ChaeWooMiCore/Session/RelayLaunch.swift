@@ -34,13 +34,15 @@ public struct RelayLaunch: Equatable, Sendable {
             "--model", model,
             // 다른 세션의 회신을 사람 승인 없이 받는다 (-p 세션은 승인 창을 띄울 수 없음)
             "--settings", #"{"crossSessionInbound":"accept"}"#,
-            // 중계 세션은 파일을 바꾸지 않는다
-            "--disallowedTools", "Edit,Write,NotebookEdit,Bash",
+            // 중계 세션은 전달만 한다. 다른 세션 메시지가 승인 없이 들어오므로 도구를 둘로 제한한다
+            "--tools", "SendMessage,ListAgents",
+            // --tools는 기본 도구만 줄인다. claude.ai 커넥터 등 MCP 도구도 싣지 않는다
+            "--strict-mcp-config",
             "--append-system-prompt", Self.systemPrompt
         ]
     }
 
-    /// 중계 규약. 2026-10-17 실측(요청 → 전달 3초 · 회신 8초, 글자 그대로 전달)한 문구다.
+    /// 중계 규약. 2026-10-17 실측(요청 → 회신 8 ~ 13초, 글자 그대로 전달)한 문구다.
     public static let systemPrompt = """
     You are the ChaeWooMi relay. You only forward messages between the ChaeWooMi app and the user's \
     Claude Code role sessions. Never do any other work, never edit files, never rephrase.
@@ -50,8 +52,9 @@ public struct RelayLaunch: Equatable, Sendable {
     exactly that session name and `message` set to `text` copied character for character. Then print exactly \
     one line: CHAEWOOMI {"event":"sent","id":"<id>"}. If SendMessage fails or the session is not found, print \
     CHAEWOOMI {"event":"not_sent","id":"<id>","reason":"<short reason>"}.
-    - {"op":"list"}: call ListAgents, then print exactly one line: CHAEWOOMI {"event":"agents","names":["<name>",...]} \
-    listing the names of the other local Claude Code sessions (not subagents, not yourself).
+    - {"op":"list","id":"<id>"}: call ListAgents, then print exactly one line: \
+    CHAEWOOMI {"event":"agents","id":"<id>","names":["<name>",...]} listing the names of the other local \
+    Claude Code sessions (not subagents, not yourself).
 
     When a message from another session arrives, print exactly one line and nothing else: \
     CHAEWOOMI {"event":"reply","from":"<sender session name>","text":"<full message text, JSON-escaped>"}.

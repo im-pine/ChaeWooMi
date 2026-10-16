@@ -30,14 +30,14 @@ struct RelayProtocolTests {
         let lines = [
             #"CHAEWOOMI {"event":"sent","id":"r1"}"#,
             #"CHAEWOOMI {"event":"not_sent","id":"r2","reason":"session not found"}"#,
-            #"CHAEWOOMI {"event":"agents","names":["job-analysis","resume"]}"#,
+            #"CHAEWOOMI {"event":"agents","id":"l1","names":["job-analysis","resume"]}"#,
             #"CHAEWOOMI {"event":"reply","from":"resume","text":"done r1\n파일 생성"}"#
         ]
         let events = try lines.flatMap { RelayOutputParser.events(fromStreamLine: try assistantLine($0)) }
         #expect(events == [
             .sent(id: "r1"),
             .notSent(id: "r2", reason: "session not found"),
-            .agents(names: ["job-analysis", "resume"]),
+            .agents(id: "l1", names: ["job-analysis", "resume"]),
             .reply(from: "resume", text: "done r1\n파일 생성")
         ])
     }
@@ -56,10 +56,20 @@ struct RelayProtocolTests {
         #expect(RelayOutputParser.events(fromStreamLine: try assistantLine("보냈습니다")).isEmpty)
         #expect(RelayOutputParser.events(fromStreamLine: try assistantLine("CHAEWOOMI {broken")).isEmpty)
         #expect(RelayOutputParser.events(fromStreamLine: try assistantLine(#"CHAEWOOMI {"event":"sent"}"#)).isEmpty)
+        let agentsWithoutID = #"CHAEWOOMI {"event":"agents","names":["resume"]}"#
+        #expect(RelayOutputParser.events(fromStreamLine: try assistantLine(agentsWithoutID)).isEmpty)
         #expect(RelayOutputParser.events(fromStreamLine: "not json").isEmpty)
     }
 
-    @Test("중계 세션은 받은 메시지를 승인 없이 받고 파일 도구를 쓰지 않게 실행한다")
+    @Test("목록 요청에는 응답을 맞춰 볼 id가 들어간다")
+    func listRequestHasID() throws {
+        let line = RelayRequest.list(id: "l7").inputLine()
+        let object = try #require(try JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any])
+        let content = try #require((object["message"] as? [String: Any])?["content"] as? String)
+        #expect(content == #"{"id":"l7","op":"list"}"#)
+    }
+
+    @Test("중계 세션은 받은 메시지를 승인 없이 받고 SendMessage · ListAgents만 쓴다")
     func launchArguments() {
         let launch = RelayLaunch(
             executable: URL(fileURLWithPath: "/bin/claude"),
@@ -69,7 +79,11 @@ struct RelayProtocolTests {
         let settingsIndex = args.firstIndex(of: "--settings").map { $0 + 1 }
         #expect(settingsIndex.map { args[$0] } == #"{"crossSessionInbound":"accept"}"#)
         #expect(args.contains("chaewoomi-relay"))
-        #expect(args.contains("Edit,Write,NotebookEdit,Bash"))
+        let toolsIndex = args.firstIndex(of: "--tools").map { $0 + 1 }
+        #expect(toolsIndex.map { args[$0] } == "SendMessage,ListAgents")
+        #expect(!args.contains("--disallowedTools"))
+        #expect(args.contains("--strict-mcp-config"))
+        #expect(!args.contains("--mcp-config"))
     }
 
     @Test("claude 실행 파일을 흔한 설치 위치 순서대로 찾는다")

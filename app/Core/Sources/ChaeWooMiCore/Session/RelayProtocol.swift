@@ -4,8 +4,8 @@ import Foundation
 public enum RelayRequest: Equatable, Sendable {
     /// `session`에 `text`를 글자 그대로 전달
     case send(id: String, session: String, text: String)
-    /// 같은 Mac의 다른 세션 이름 목록
-    case list
+    /// 같은 Mac의 다른 세션 이름 목록. 응답에 같은 `id`가 붙는다
+    case list(id: String)
 
     /// stream-json 입력 한 줄 (끝 줄바꿈 포함)
     public func inputLine() -> String {
@@ -17,7 +17,7 @@ public enum RelayRequest: Equatable, Sendable {
     private func payload() -> String {
         let object: [String: String] = switch self {
         case let .send(id, session, text): ["op": "send", "id": id, "to": session, "text": text]
-        case .list: ["op": "list"]
+        case let .list(id): ["op": "list", "id": id]
         }
         let data = (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data()
         return String(bytes: data, encoding: .utf8) ?? ""
@@ -28,7 +28,7 @@ public enum RelayRequest: Equatable, Sendable {
 public enum RelayEvent: Equatable, Sendable {
     case sent(id: String)
     case notSent(id: String, reason: String)
-    case agents(names: [String])
+    case agents(id: String, names: [String])
     case reply(from: String, text: String)
 }
 
@@ -70,7 +70,8 @@ public enum RelayOutputParser {
         case "not_sent":
             return id.map { .notSent(id: $0, reason: object["reason"] as? String ?? "") }
         case "agents":
-            return (object["names"] as? [String]).map { .agents(names: $0) }
+            guard let id, let names = object["names"] as? [String] else { return nil }
+            return .agents(id: id, names: names)
         case "reply":
             guard let from = object["from"] as? String, let text = object["text"] as? String else { return nil }
             return .reply(from: from, text: text)
