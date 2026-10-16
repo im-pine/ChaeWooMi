@@ -7,6 +7,7 @@ struct ChaeWooMiApp: App {
 
     var body: some Scene {
         MenuBarExtra("채우미", systemImage: "leaf") {
+            LauncherMenu(launcher: appDelegate.launcher)
             SettingsLink { Text("설정…") }
                 .keyboardShortcut(",")
             Divider()
