@@ -14,7 +14,7 @@ struct ChaeWooMiApp: App {
                 .keyboardShortcut("q")
         }
         Settings {
-            SettingsView(settings: settings, bridge: appDelegate.bridge)
+            SettingsView(settings: settings, bridge: appDelegate.bridge, sessions: appDelegate.sessions)
         }
     }
 }

@@ -4,10 +4,12 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var settings: AppSettings
     let bridge: BrowserBridge
+    let sessions: SessionHub
 
     var body: some View {
         Form {
             VaultSection(settings: settings)
+            SessionSection(settings: settings, sessions: sessions)
             BrowserSection(bridge: bridge)
         }
         .formStyle(.grouped)

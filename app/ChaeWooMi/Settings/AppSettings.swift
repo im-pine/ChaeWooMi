@@ -1,3 +1,4 @@
+import ChaeWooMiCore
 import Foundation
 import Observation
 
@@ -7,6 +8,7 @@ import Observation
 final class AppSettings {
     private enum Key {
         static let vaultPath = "vaultPath"
+        static let sessionRoster = "sessionRoster"
     }
 
     private let defaults: UserDefaults
@@ -15,8 +17,15 @@ final class AppSettings {
         didSet { defaults.set(vaultPath, forKey: Key.vaultPath) }
     }
 
+    /// 역할별 세션 이름. 처음에는 기본 이름(job-analysis · resume · application)
+    var sessionRoster: SessionRoster {
+        didSet { defaults.set(try? JSONEncoder().encode(sessionRoster), forKey: Key.sessionRoster) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         vaultPath = defaults.string(forKey: Key.vaultPath)
+        sessionRoster = defaults.data(forKey: Key.sessionRoster)
+            .flatMap { try? JSONDecoder().decode(SessionRoster.self, from: $0) } ?? .defaults
     }
 }
