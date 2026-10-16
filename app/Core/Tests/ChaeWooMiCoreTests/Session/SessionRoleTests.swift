@@ -69,6 +69,9 @@ struct SessionRoleTests {
     @Test("이름 일부만 같은 세션은 연결로 치지 않는다")
     func exactMatch() {
         let decision = SessionRequestGate.decide(role: .resume, roster: .defaults, listed: ["resume-old", "my resume"])
-        #expect(decision != .send(sessionName: "resume"))
+        guard case .refuse = decision else {
+            Issue.record("부분 일치 세션에 요청을 보내려 함: \(decision)")
+            return
+        }
     }
 }

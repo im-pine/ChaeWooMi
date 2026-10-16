@@ -33,22 +33,19 @@ struct DocumentJobLockTests {
         #expect(granted == 1)
     }
 
-    @Test("완료 · 실패 · 보관 · 취소 뒤에는 다른 문서를 시작할 수 있다")
-    func releaseReasons() async {
+    @Test("잠금을 풀면 다른 문서를 시작할 수 있다")
+    func releaseThenAcquire() async {
         let lock = DocumentJobLock()
-        for reason in [DocumentJobLock.Release.completed, .failed, .archived, .cancelled] {
-            _ = await lock.acquire(resume)
-            #expect(await lock.release(resume, because: reason))
-            #expect(await lock.acquire(coverLetter) == .granted)
-            await lock.release(coverLetter, because: .completed)
-        }
+        _ = await lock.acquire(resume)
+        #expect(await lock.release(resume))
+        #expect(await lock.acquire(coverLetter) == .granted)
     }
 
     @Test("잡고 있지 않은 작업 이름으로는 잠금이 풀리지 않는다")
     func wrongRelease() async {
         let lock = DocumentJobLock()
         _ = await lock.acquire(resume)
-        #expect(await lock.release(coverLetter, because: .failed) == false)
+        #expect(await lock.release(coverLetter) == false)
         #expect(await lock.current == resume)
     }
 }

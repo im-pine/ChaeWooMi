@@ -26,11 +26,6 @@ public actor DocumentJobLock {
         case busy(DocumentJob)
     }
 
-    /// 잠금을 푸는 이유
-    public enum Release: Sendable {
-        case completed, failed, archived, cancelled
-    }
-
     public private(set) var current: DocumentJob?
 
     public init() {}
@@ -43,9 +38,9 @@ public actor DocumentJobLock {
         return current == job ? .alreadyRunning : .busy(current)
     }
 
-    /// 지금 잡고 있는 작업만 풀 수 있다. 다른 작업 이름으로는 풀리지 않는다
+    /// 작업이 완료 · 실패 · 보관 · 취소되면 푼다. 지금 잡고 있는 작업만 풀 수 있고 다른 작업 이름으로는 풀리지 않는다
     @discardableResult
-    public func release(_ job: DocumentJob, because reason: Release) -> Bool {
+    public func release(_ job: DocumentJob) -> Bool {
         guard current == job else { return false }
         current = nil
         return true

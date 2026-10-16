@@ -43,9 +43,13 @@ struct SessionSection: View {
     }
 
     private var problemTexts: [String] {
-        settings.sessionRoster.problems.compactMap { problem in
-            guard case let .duplicated(name, roles) = problem else { return nil }
-            return "`\(name)` 세션을 \(roles.map(\.label).joined(separator: " · "))가 함께 씁니다. 역할마다 다른 세션을 지정하세요"
+        settings.sessionRoster.problems.map { problem in
+            switch problem {
+            case let .missing(role):
+                SessionAvailability.notConfigured.guidance(for: role)
+            case let .duplicated(name, roles):
+                "`\(name)` 세션을 \(roles.map(\.label).joined(separator: " · "))가 함께 씁니다. 역할마다 다른 세션을 지정하세요"
+            }
         }
     }
 }

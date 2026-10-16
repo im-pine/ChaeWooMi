@@ -7,14 +7,18 @@ import Observation
 @Observable
 final class BrowserBridge {
     private(set) var registration: NativeHostManifest.Registration = .missing
-    private(set) var extensionVersion: String?
-    private(set) var everConnected = false
+    private(set) var connections = ExtensionConnections()
     private(set) var serverError: String?
 
     private var server: BridgeServer?
+    private var nextConnectionID = 0
 
     var status: BrowserConnectionStatus {
-        .resolve(registration: registration, extensionVersion: extensionVersion, everConnected: everConnected)
+        .resolve(
+            registration: registration,
+            extensionVersion: connections.currentVersion,
+            everConnected: connections.everConnected
+        )
     }
 
     /// 호스트 실행 파일은 앱 번들의 `Contents/MacOS/chaewoomi-host` (project.yml 빌드 스크립트가 복사)
@@ -48,7 +52,7 @@ final class BrowserBridge {
             )
             let server = try BridgeServer(path: socket.path)
             server.start { connection in
-                Task { await BrowserBridge.serve(connection, bridge: self) }
+                Task { await self.accept(connection) }
             }
             self.server = server
         } catch {
@@ -56,22 +60,28 @@ final class BrowserBridge {
         }
     }
 
+    private func accept(_ connection: BridgeConnection) {
+        nextConnectionID += 1
+        let id = nextConnectionID
+        connections.opened(id)
+        Task { await BrowserBridge.serve(connection, id: id, bridge: self) }
+    }
+
     /// 연결 하나의 메시지를 끝날 때까지 처리한다
-    private nonisolated static func serve(_ connection: BridgeConnection, bridge: BrowserBridge) async {
+    private nonisolated static func serve(_ connection: BridgeConnection, id: Int, bridge: BrowserBridge) async {
         for await line in connection.lines {
             guard let message = try? JSONDecoder().decode(ExtensionToApp.self, from: Data(line.utf8)) else {
                 continue
             }
-            await bridge.handle(message, from: connection)
+            await bridge.handle(message, from: connection, id: id)
         }
-        await bridge.connectionClosed()
+        await bridge.connectionClosed(id)
     }
 
-    private func handle(_ message: ExtensionToApp, from connection: BridgeConnection) {
+    private func handle(_ message: ExtensionToApp, from connection: BridgeConnection, id: Int) {
         switch message {
         case let .hello(version):
-            extensionVersion = version
-            everConnected = true
+            connections.hello(id, version: version)
             try? connection.send(AppToExtension.ack(appVersion: Self.appVersion))
         case .jobPage:
             // 공고 처리는 1단계(재지원 주의)에서 붙인다
@@ -79,8 +89,8 @@ final class BrowserBridge {
         }
     }
 
-    private func connectionClosed() {
-        extensionVersion = nil
+    private func connectionClosed(_ id: Int) {
+        connections.closed(id)
     }
 
     private static var appVersion: String {

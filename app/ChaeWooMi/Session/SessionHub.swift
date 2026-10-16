@@ -25,6 +25,8 @@ final class SessionHub {
             listed = try await startedRelay().listSessions()
             lastError = nil
         } catch {
+            // 이전 목록으로 연결됨이라 판정해 요청을 보내지 않도록 비운다
+            listed = nil
             lastError = Self.describe(error)
         }
     }
@@ -52,8 +54,10 @@ final class SessionHub {
         self.relay = nil
     }
 
+    /// 중계 세션이 끝났으면(로그인 만료 · 비정상 종료) 다시 띄운다
     private func startedRelay() async throws -> RelayClient {
-        if let relay { return relay }
+        if let relay, await relay.isRunning { return relay }
+        relay = nil
         guard let executable = RelayLaunch.findExecutable() else { throw HubError.claudeNotFound }
         let folder = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/ChaeWooMi/relay", isDirectory: true)
