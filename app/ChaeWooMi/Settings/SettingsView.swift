@@ -3,10 +3,12 @@ import SwiftUI
 /// 설정 창: 볼트 경로 · 세션 연결 · 브라우저 연결 · 점검
 struct SettingsView: View {
     @Bindable var settings: AppSettings
+    let bridge: BrowserBridge
 
     var body: some View {
         Form {
             VaultSection(settings: settings)
+            BrowserSection(bridge: bridge)
         }
         .formStyle(.grouped)
         .frame(width: 460)

@@ -100,15 +100,13 @@ public actor RelayClient {
     }
 
     private func readOutput(_ handle: FileHandle) {
+        // 출력이 끊기면 프로세스 종료 처리에서 대기 중인 요청을 실패로 돌린다
+        let lines = LineReader.lines(from: handle)
         Task { [weak self] in
-            do {
-                for try await line in handle.bytes.lines {
-                    for event in RelayOutputParser.events(fromStreamLine: line) {
-                        await self?.handle(event)
-                    }
+            for await line in lines {
+                for event in RelayOutputParser.events(fromStreamLine: line) {
+                    await self?.handle(event)
                 }
-            } catch {
-                // 출력이 끊기면 프로세스 종료 처리에서 대기 중인 요청을 실패로 돌린다
             }
         }
     }

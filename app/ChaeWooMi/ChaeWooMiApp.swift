@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct ChaeWooMiApp: App {
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @State private var settings = AppSettings()
 
     var body: some Scene {
@@ -13,7 +14,7 @@ struct ChaeWooMiApp: App {
                 .keyboardShortcut("q")
         }
         Settings {
-            SettingsView(settings: settings)
+            SettingsView(settings: settings, bridge: appDelegate.bridge)
         }
     }
 }
