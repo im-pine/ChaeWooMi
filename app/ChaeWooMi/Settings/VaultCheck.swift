@@ -2,18 +2,24 @@ import ChaeWooMiCore
 import Foundation
 
 /// 볼트 경로 점검 결과를 설정 화면 문구로 바꾼다.
-enum VaultCheck {
-    static func message(for path: String?) -> (ok: Bool, text: String) {
+struct VaultCheck: Equatable, Sendable {
+    let isOK: Bool
+    let text: String
+
+    static let checking = VaultCheck(isOK: true, text: "점검 중…")
+
+    /// 볼트를 훑고 12.0을 읽으므로 메인 스레드 밖에서 부른다.
+    static func run(for path: String?) -> VaultCheck {
         guard let path, !path.isEmpty else {
-            return (false, "볼트 경로를 지정하세요")
+            return VaultCheck(isOK: false, text: "볼트 경로를 지정하세요")
         }
         do {
             let loaded = try ApplicationStatusLoader.load(vault: URL(fileURLWithPath: path, isDirectory: true))
             let skipped = loaded.result.skippedRows
             let suffix = skipped > 0 ? " (읽지 못한 행 \(skipped)개)" : ""
-            return (true, "12.0 읽기 성공 · 기록 \(loaded.result.records.count)건\(suffix)")
+            return VaultCheck(isOK: true, text: "12.0 읽기 성공 · 기록 \(loaded.result.records.count)건\(suffix)")
         } catch {
-            return (false, text(for: error))
+            return VaultCheck(isOK: false, text: text(for: error))
         }
     }
 
