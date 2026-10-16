@@ -6,9 +6,17 @@ import Testing
 private let fakeRelayScript = #"""
 #!/bin/sh
 say() { printf '{"type":"assistant","message":{"content":[{"type":"text","text":"CHAEWOOMI %s"}]}}\n' "$1"; }
+lists=0
 while IFS= read -r line; do
   case "$line" in
-    *'\"op\":\"list\"'*) say '{\"event\":\"agents\",\"names\":[\"job-analysis\",\"resume\"]}' ;;
+    *'\"op\":\"list\"'*)
+      lists=$((lists + 1))
+      id=$(printf '%s' "$line" |
+        sed -n 's/.*\\"id\\":\\"\([^\\]*\)\\".*/\1/p')
+      # 첫 목록 요청만 1초 늦게 답한다 (시간 초과 뒤 늦은 응답 시험)
+      if [ "$lists" -eq 1 ] && [ -n "$SLOW_FIRST_LIST" ]; then sleep 1; fi
+      names="[\\\"job-analysis\\\",\\\"n$lists\\\"]"
+      say "{\\\"event\\\":\\\"agents\\\",\\\"id\\\":\\\"$id\\\",\\\"names\\\":$names}" ;;
     *'\"to\":\"resume\"'*)
       say '{\"event\":\"sent\",\"id\":\"r1\"}'
       say '{\"event\":\"reply\",\"from\":\"resume\",\"text\":\"done r1\"}' ;;
@@ -23,11 +31,13 @@ private struct FakeRelay: ~Copyable {
     let folder: URL
     let client: RelayClient
 
-    init() throws {
+    /// `prelude`는 스크립트 맨 앞(셔뱅 다음)에 들어가는 셸 줄 (동작을 바꾸는 시험용)
+    init(prelude: String = "") throws {
         folder = FileManager.default.temporaryDirectory.appendingPathComponent("chaewoomi-relay-\(UUID())")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let script = folder.appendingPathComponent("fake-claude")
-        try fakeRelayScript.write(to: script, atomically: true, encoding: .utf8)
+        let source = fakeRelayScript.replacingOccurrences(of: "#!/bin/sh\n", with: "#!/bin/sh\n\(prelude)\n")
+        try source.write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
         client = RelayClient(launch: RelayLaunch(executable: script, workingDirectory: folder))
     }
@@ -68,7 +78,47 @@ struct RelayClientTests {
         let relay = try FakeRelay()
         try await relay.client.start()
 
-        #expect(try await relay.client.listSessions() == ["job-analysis", "resume"])
+        #expect(try await relay.client.listSessions() == ["job-analysis", "n1"])
+        await relay.client.stop()
+    }
+
+    @Test("시간 초과된 목록 요청의 늦은 응답은 다음 목록 요청에 붙지 않는다")
+    func lateListReplyIgnored() async throws {
+        let relay = try FakeRelay(prelude: "SLOW_FIRST_LIST=1")
+        try await relay.client.start()
+
+        await #expect(throws: RelayClient.RelayError.timedOut) {
+            try await relay.client.listSessions(timeout: .milliseconds(300))
+        }
+        #expect(try await relay.client.listSessions() == ["job-analysis", "n2"])
+        await relay.client.stop()
+    }
+
+    @Test("같은 id의 요청이 진행 중이면 두 번째는 바로 거부한다")
+    func duplicateID() async throws {
+        let relay = try FakeRelay()
+        try await relay.client.start()
+        let client = relay.client
+
+        let first = Task { try await client.send(id: "same", to: "silent", text: "a", timeout: .seconds(2)) }
+        try await Task.sleep(for: .milliseconds(100))
+        await #expect(throws: RelayClient.RelayError.duplicateID) {
+            try await client.send(id: "same", to: "silent", text: "b")
+        }
+        await #expect(throws: RelayClient.RelayError.timedOut) { try await first.value }
+        await client.stop()
+    }
+
+    @Test("멈춘 직후 다시 띄워도 이전 프로세스 종료가 새 연결을 지우지 않는다")
+    func restartKeepsNewProcess() async throws {
+        let relay = try FakeRelay()
+        try await relay.client.start()
+        await relay.client.stop()
+        try await relay.client.start()
+        try await Task.sleep(for: .milliseconds(200))
+
+        #expect(await relay.client.isRunning)
+        #expect(try await relay.client.listSessions() == ["job-analysis", "n1"])
         await relay.client.stop()
     }
 

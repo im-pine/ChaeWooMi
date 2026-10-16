@@ -10,6 +10,8 @@ public actor RelayClient {
         case timedOut
         /// 중계 세션이 보내지 못했다고 알림 (세션 없음 등)
         case notSent(reason: String)
+        /// 같은 id의 요청이 아직 진행 중
+        case duplicateID
     }
 
     public struct Reply: Equatable, Sendable {
@@ -25,8 +27,7 @@ public actor RelayClient {
     private var process: Process?
     private var input: FileHandle?
     private var pendingSends: [String: CheckedContinuation<Result<Void, RelayError>, Never>] = [:]
-    /// 목록 요청은 보낸 순서대로 답이 오므로 순서를 지킨다
-    private var pendingLists: [(key: UUID, continuation: CheckedContinuation<Result<[String], RelayError>, Never>)] = []
+    private var pendingLists: [String: CheckedContinuation<Result<[String], RelayError>, Never>] = [:]
 
     public init(launch: RelayLaunch) {
         self.launch = launch
@@ -46,22 +47,27 @@ public actor RelayClient {
         process.standardInput = stdin
         process.standardOutput = stdout
         process.standardError = FileHandle.nullDevice
-        process.terminationHandler = { [weak self] _ in
-            Task { await self?.processEnded() }
+        process.terminationHandler = { [weak self] ended in
+            // 다시 띄운 뒤 이전 프로세스의 종료가 늦게 와도 새 프로세스를 지우지 않게 누가 끝났는지 넘긴다
+            let ended = ObjectIdentifier(ended)
+            Task { await self?.processEnded(ended) }
         }
         do {
             try process.run()
         } catch {
             throw .launchFailed(error.localizedDescription)
         }
+        // 중계 세션이 먼저 끝나 읽는 쪽이 닫혀도 SIGPIPE로 앱이 죽지 않고 쓰기 오류가 되게 한다
+        _ = fcntl(stdin.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
         self.process = process
         input = stdin.fileHandleForWriting
         readOutput(stdout.fileHandleForReading)
     }
 
     public func stop() {
-        process?.terminate()
-        processEnded()
+        guard let process else { return }
+        process.terminate()
+        processEnded(ObjectIdentifier(process))
     }
 
     /// `to` 세션에 `text`를 그대로 보낸다. 중계 세션이 보냈다고 알리면 돌아온다.
@@ -71,6 +77,7 @@ public actor RelayClient {
         text: String,
         timeout: Duration = .seconds(60)
     ) async throws(RelayError) {
+        guard pendingSends[id] == nil else { throw .duplicateID }
         try write(.send(id: id, session: session, text: text))
         let result = await withCheckedContinuation { continuation in
             pendingSends[id] = continuation
@@ -81,11 +88,11 @@ public actor RelayClient {
 
     /// 같은 Mac에서 메시지를 받을 수 있는 세션 이름 목록
     public func listSessions(timeout: Duration = .seconds(60)) async throws(RelayError) -> [String] {
-        try write(.list)
-        let key = UUID()
+        let id = UUID().uuidString
+        try write(.list(id: id))
         let result = await withCheckedContinuation { continuation in
-            pendingLists.append((key, continuation))
-            scheduleTimeout(after: timeout) { client in await client.finishList(key: key, .failure(.timedOut)) }
+            pendingLists[id] = continuation
+            scheduleTimeout(after: timeout) { client in await client.finishList(id: id, .failure(.timedOut)) }
         }
         return try result.get()
     }
@@ -117,8 +124,9 @@ public actor RelayClient {
             finishSend(id: id, .success(()))
         case let .notSent(id, reason):
             finishSend(id: id, .failure(.notSent(reason: reason)))
-        case let .agents(names):
-            if let key = pendingLists.first?.key { finishList(key: key, .success(names)) }
+        case let .agents(id, names):
+            // 시간 초과로 끝난 요청의 늦은 응답은 id가 없어 버려진다
+            finishList(id: id, .success(names))
         case let .reply(from, text):
             replyContinuation.yield(Reply(from: from, text: text))
         }
@@ -128,9 +136,8 @@ public actor RelayClient {
         pendingSends.removeValue(forKey: id)?.resume(returning: result)
     }
 
-    private func finishList(key: UUID, _ result: Result<[String], RelayError>) {
-        guard let index = pendingLists.firstIndex(where: { $0.key == key }) else { return }
-        pendingLists.remove(at: index).continuation.resume(returning: result)
+    private func finishList(id: String, _ result: Result<[String], RelayError>) {
+        pendingLists.removeValue(forKey: id)?.resume(returning: result)
     }
 
     private func scheduleTimeout(after timeout: Duration, _ action: @escaping @Sendable (RelayClient) async -> Void) {
@@ -140,10 +147,11 @@ public actor RelayClient {
         }
     }
 
-    private func processEnded() {
-        process = nil
+    private func processEnded(_ ended: ObjectIdentifier) {
+        guard let process, ObjectIdentifier(process) == ended else { return }
+        self.process = nil
         input = nil
         for id in pendingSends.keys { finishSend(id: id, .failure(.notRunning)) }
-        for key in pendingLists.map(\.key) { finishList(key: key, .failure(.notRunning)) }
+        for id in pendingLists.keys { finishList(id: id, .failure(.notRunning)) }
     }
 }
