@@ -95,10 +95,17 @@ struct ApplicationStatusLoaderTests {
         }
     }
 
-    @Test("탐색 깊이(4단계)보다 깊은 12.0은 찾지 않는다")
-    func depthLimit() throws {
+    @Test("볼트 루트에서 4단계 깊이의 12.0은 찾는다")
+    func depthLimitInside() throws {
         let vault = try TemporaryVault()
-        try vault.write("a/b/c/d/e/12.0 지원 현황.md", statusTable)
+        try vault.write("a/b/c/12.0 지원 현황.md", statusTable)
+        #expect(try ApplicationStatusLoader.load(vault: vault.root).result.records.count == 1)
+    }
+
+    @Test("볼트 루트에서 5단계 깊이의 12.0은 찾지 않는다")
+    func depthLimitOutside() throws {
+        let vault = try TemporaryVault()
+        try vault.write("a/b/c/d/12.0 지원 현황.md", statusTable)
         #expect(throws: ApplicationStatusLoader.LoadError.statusFileNotFound) {
             try ApplicationStatusLoader.load(vault: vault.root)
         }
