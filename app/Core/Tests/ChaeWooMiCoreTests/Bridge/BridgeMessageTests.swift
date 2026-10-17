@@ -18,11 +18,16 @@ struct BridgeMessageTests {
         let hello = try decoder.decode(ExtensionToApp.self, from: example("hello.json"))
         #expect(hello == .hello(extensionVersion: "0.1.0"))
         let page = try decoder.decode(ExtensionToApp.self, from: example("job-page.json"))
-        #expect(page == .jobPage(
+        #expect(page == .jobPage(JobPage(
             site: "saramin",
             url: "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=12345678",
-            company: "가상전자(주)"
-        ))
+            companies: ["가상전자(주)"],
+            title: "[가상전자(주)] 프론트엔드 개발자 채용",
+            postingText: "담당업무 웹 프론트엔드 개발 자격요건 TypeScript 경험"
+        )))
+        #expect(try decoder.decode(ExtensionToApp.self, from: example("page-left.json")) == .pageLeft)
+        let apply = try decoder.decode(ExtensionToApp.self, from: example("apply-button.json"))
+        #expect(apply == .applyButton(covering: true))
     }
 
     @Test("앱이 보내는 응답은 예시와 같은 JSON이다")
@@ -43,12 +48,15 @@ struct BridgeMessageTests {
         #expect(throws: DecodingError.self) { try decoder.decode(AppToExtension.self, from: helloWithoutVersion) }
     }
 
-    @Test("회사명 없는 공고 메시지도 주고받는다")
+    @Test("회사명 후보 · 원문이 없는 공고 메시지도 주고받고, 없는 필드는 쓰지 않는다")
     func jobPageWithoutCompany() throws {
-        let message = ExtensionToApp.jobPage(site: "wanted", url: "https://www.wanted.co.kr/wd/1", company: nil)
+        let page = JobPage(site: "wanted", url: "https://www.wanted.co.kr/wd/1", companies: [])
+        let message = ExtensionToApp.jobPage(page)
         let data = try JSONEncoder().encode(message)
         #expect(try JSONDecoder().decode(ExtensionToApp.self, from: data) == message)
-        #expect(String(bytes: data, encoding: .utf8)?.contains("company") == false)
+        let text = String(bytes: data, encoding: .utf8) ?? ""
+        #expect(!text.contains("postingText"))
+        #expect(text.contains(#""type":"jobPage""#))
     }
 }
 

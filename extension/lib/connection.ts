@@ -46,5 +46,10 @@ export function createConnection(deps: ConnectionDeps) {
     port.postMessage(hello);
   }
 
-  return { connect };
+  /** 연결돼 있으면 앱에 보낸다. 끊겨 있으면 버린다 (다시 연결할 때 지금 상태를 다시 보냄) */
+  function post(message: ExtensionToApp) {
+    current?.postMessage(message);
+  }
+
+  return { connect, post };
 }

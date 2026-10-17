@@ -27,25 +27,42 @@ describe('공고 메시지 거르기 (SEC-002)', () => {
       type: 'jobPage',
       site: 'wanted',
       url: 'https://www.wanted.co.kr/wd/1?session=s',
-      company: '가상전자(주)',
+      companies: ['가상전자(주)'],
       cookie: 'SID=secret',
       password: 'pw',
-    } as JobPageMessage;
+    } as unknown as JobPageMessage;
     expect(sanitizeJobPage(page)).toEqual({
       type: 'jobPage',
       site: 'wanted',
       url: 'https://www.wanted.co.kr/wd/1',
-      company: '가상전자(주)',
+      companies: ['가상전자(주)'],
     });
   });
 
-  it('회사명이 비면 company 필드를 넣지 않는다', () => {
+  it('빈 회사명은 빼고, 후보는 5개 · 원문은 2만 자까지만 보낸다', () => {
     const page: JobPageMessage = {
       type: 'jobPage',
       site: 'wanted',
       url: 'https://www.wanted.co.kr/wd/1',
-      company: ' ',
+      companies: [' ', '가1', '가2', '가3', '가4', '가5', '가6'],
+      postingText: '가'.repeat(30_000),
     };
-    expect(sanitizeJobPage(page)).not.toHaveProperty('company');
+    const result = sanitizeJobPage(page);
+    expect(result.companies).toEqual(['가1', '가2', '가3', '가4', '가5']);
+    expect(result.postingText).toHaveLength(20_000);
+  });
+});
+
+describe('공고 원문 거르기 (SEC-002)', () => {
+  it('공고 원문의 이메일 · 전화번호 · 토큰을 가리고, 원문이 없으면 필드를 넣지 않는다', () => {
+    const page: JobPageMessage = {
+      type: 'jobPage',
+      site: 'wanted',
+      url: 'https://www.wanted.co.kr/wd/1',
+      companies: ['가상전자'],
+      postingText: '문의 recruit@example.com 010-1234-5678',
+    };
+    expect(sanitizeJobPage(page).postingText).toBe('문의 [제외] [제외]');
+    expect(sanitizeJobPage({ ...page, postingText: undefined })).not.toHaveProperty('postingText');
   });
 });

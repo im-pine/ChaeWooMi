@@ -3,7 +3,29 @@ import Foundation
 /// 확장 → 앱 메시지. 예시는 저장소 루트 `protocol/examples/` (TS 테스트와 공용).
 public enum ExtensionToApp: Equatable, Sendable {
     case hello(extensionVersion: String)
-    case jobPage(site: String, url: String, company: String?)
+    /// 지정 사이트 공고 (회사명 후보는 구조화 데이터 → 메타 → DOM 순, 비면 추출 실패)
+    case jobPage(JobPage)
+    /// 공고가 아닌 페이지 · 다른 탭으로 옮김 → 이전 회사 결과를 지운다 (WEB-015)
+    case pageLeft
+    /// 지원 버튼이 카드 자리를 가리는가 (APP-015)
+    case applyButton(covering: Bool)
+}
+
+public struct JobPage: Codable, Equatable, Sendable {
+    public let site: String
+    public let url: String
+    public let companies: [String]
+    public let title: String?
+    /// 없으면 공고 원문을 찾지 못함 (WEB-011)
+    public let postingText: String?
+
+    public init(site: String, url: String, companies: [String], title: String? = nil, postingText: String? = nil) {
+        self.site = site
+        self.url = url
+        self.companies = companies
+        self.title = title
+        self.postingText = postingText
+    }
 }
 
 /// 앱 → 확장 메시지
@@ -15,7 +37,7 @@ public enum AppToExtension: Equatable, Sendable {
 
 extension ExtensionToApp: Codable {
     private enum CodingKeys: String, CodingKey {
-        case type, extensionVersion, site, url, company
+        case type, extensionVersion, covering
     }
 
     public init(from decoder: any Decoder) throws {
@@ -24,11 +46,11 @@ extension ExtensionToApp: Codable {
         case "hello":
             self = .hello(extensionVersion: try container.decode(String.self, forKey: .extensionVersion))
         case "jobPage":
-            self = .jobPage(
-                site: try container.decode(String.self, forKey: .site),
-                url: try container.decode(String.self, forKey: .url),
-                company: try container.decodeIfPresent(String.self, forKey: .company)
-            )
+            self = .jobPage(try JobPage(from: decoder))
+        case "pageLeft":
+            self = .pageLeft
+        case "applyButton":
+            self = .applyButton(covering: try container.decode(Bool.self, forKey: .covering))
         case let other:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "모르는 type: \(other)")
         }
@@ -40,11 +62,14 @@ extension ExtensionToApp: Codable {
         case let .hello(version):
             try container.encode("hello", forKey: .type)
             try container.encode(version, forKey: .extensionVersion)
-        case let .jobPage(site, url, company):
+        case let .jobPage(page):
             try container.encode("jobPage", forKey: .type)
-            try container.encode(site, forKey: .site)
-            try container.encode(url, forKey: .url)
-            try container.encodeIfPresent(company, forKey: .company)
+            try page.encode(to: encoder)
+        case .pageLeft:
+            try container.encode("pageLeft", forKey: .type)
+        case let .applyButton(covering):
+            try container.encode("applyButton", forKey: .type)
+            try container.encode(covering, forKey: .covering)
         }
     }
 }
