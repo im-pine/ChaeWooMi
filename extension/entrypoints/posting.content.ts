@@ -6,6 +6,7 @@ import {
   type PageReport,
 } from '@/lib/postingWatch';
 import { DEFAULT_CONFIG, configProblems, hostPatterns, type SiteConfig } from '@/lib/siteConfig';
+import { sameDocument } from '@/lib/tabPages';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 
 async function currentConfig(): Promise<SiteConfig> {
@@ -91,7 +92,9 @@ export default defineContentScript({
     watchApplyButton(config, ctx);
     watchCompletion(config, ctx);
     // SPA 주소 변경(원티드 등): 이전 회사 결과를 비우고 다시 읽는다 (WEB-015)
-    ctx.addEventListener(window, 'wxt:locationchange', () => {
+    ctx.addEventListener(window, 'wxt:locationchange', ({ newUrl, oldUrl }) => {
+      // 해시만 바뀌면 같은 공고 (사람인 `#seq=0`) — 비우고 다시 읽지 않는다
+      if (sameDocument(newUrl.href, oldUrl.href)) return;
       report({ kind: 'left' });
       scan(config, ctx);
     });

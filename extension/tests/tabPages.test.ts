@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JobPageMessage } from '@/lib/protocol';
-import { TabPages } from '@/lib/tabPages';
+import { sameDocument, TabPages } from '@/lib/tabPages';
 
 const page = (company: string): JobPageMessage => ({
   type: 'jobPage',
@@ -60,5 +60,21 @@ describe('등록 도메인 밖으로 이동', () => {
     expect(tabs.navigating(1)).toEqual({ type: 'pageLeft' });
     expect(tabs.navigating(1)).toBeNull();
     expect(tabs.current()).toEqual({ type: 'pageLeft' });
+  });
+
+  it('해시만 바뀐 같은 문서의 loading은 공고를 지우지 않는다 (사람인 #seq=0 실측 버그)', () => {
+    const tabs = new TabPages();
+    tabs.activate(1);
+    const posting = page('가상전자');
+    tabs.posting(1, posting);
+    expect(tabs.navigating(1, `${posting.url}#seq=0`)).toBeNull();
+    expect(tabs.navigating(1, posting.url)).toBeNull();
+    expect(tabs.current()).toEqual(posting);
+    expect(tabs.navigating(1, 'https://www.wanted.co.kr/wd/999')).toEqual({ type: 'pageLeft' });
+  });
+
+  it('같은 문서 판단은 해시만 무시한다', () => {
+    expect(sameDocument('https://a.kr/v?x=1', 'https://a.kr/v?x=1#seq=0')).toBe(true);
+    expect(sameDocument('https://a.kr/v?x=1', 'https://a.kr/v?x=2')).toBe(false);
   });
 });
