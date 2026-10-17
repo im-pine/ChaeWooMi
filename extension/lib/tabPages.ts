@@ -35,6 +35,11 @@ export class TabPages {
     return (this.active !== null && this.pages.get(this.active)) || { type: 'pageLeft' };
   }
 
+  /** 탭이 새 페이지를 불러오기 시작함 (다른 사이트로 가도 알 수 있도록). 새 페이지가 공고면 콘텐츠 스크립트가 다시 알린다 */
+  navigating(tabId: number): ExtensionToApp | null {
+    return this.left(tabId);
+  }
+
   /** 탭을 닫음 */
   closed(tabId: number): ExtensionToApp | null {
     return this.left(tabId);

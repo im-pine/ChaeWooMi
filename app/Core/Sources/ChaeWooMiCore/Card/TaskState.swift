@@ -82,7 +82,7 @@ public enum TaskStateRule {
 
     private static func documentState(_ kind: TaskKind, folders: CompanyFolders) -> TaskState {
         guard let marker = kind.outputMarker else { return .ready }
-        let files = folders.outputFolders.flatMap { folder in
+        let files = folders.currentOutputFolders.flatMap { folder in
             (try? FileManager.default.contentsOfDirectory(
                 at: folder,
                 includingPropertiesForKeys: [.contentModificationDateKey]
