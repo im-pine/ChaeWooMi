@@ -50,6 +50,9 @@ struct DetailSection: View {
         VStack(alignment: .leading, spacing: 6) {
             Divider()
             records
+            if let recordController = store.records {
+                RecordDetail(records: recordController, company: company)
+            }
             Text("문서").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
             ForEach(TaskKind.allCases, id: \.self) { kind in
                 row(kind.label, store.taskState(kind).label)
