@@ -2,7 +2,8 @@ import Foundation
 
 /// 채우미 → 역할 세션 요청 (볼트 `00.0.7 채우미 연동 지침` 2 · 3장 형식).
 public enum SessionRequest: Equatable, Sendable {
-    case analysis(company: String, platform: String, url: String, postingText: String?)
+    /// `supplement`: 분석 실패 뒤 사용자가 보완한 글 (ANL-003). 사용자 입력이라 비신뢰 블록에 넣지 않는다
+    case analysis(company: String, platform: String, url: String, postingText: String?, supplement: String? = nil)
     case resumeDraft(company: String, url: String, postingText: String?)
     case coverLetterDraft(company: String, url: String, postingText: String?, questions: [CoverLetterQuestion])
     case edit(company: String, kind: DocumentKind, draftPath: String, command: String, userEdited: Bool)
@@ -37,8 +38,9 @@ public enum SessionRequest: Equatable, Sendable {
 
     private var fields: [String] {
         switch self {
-        case let .analysis(company, platform, url, _):
+        case let .analysis(company, platform, url, _, supplement):
             ["회사: \(company)", "플랫폼: \(platform)", "공고 주소: \(url)"]
+                + (supplement.map { ["사용자 보완: \(RequestText.oneLine($0))"] } ?? [])
         case let .resumeDraft(company, url, _):
             ["회사: \(company)", "공고 주소: \(url)"]
         case let .coverLetterDraft(company, url, _, questions):
@@ -55,7 +57,7 @@ public enum SessionRequest: Equatable, Sendable {
     /// 공고 원문은 비신뢰 자료 블록으로 감싼다 (AGT-011). 문서 요청에도 지금 공고 원문을 붙인다 (ANL-013)
     private var untrusted: [String] {
         switch self {
-        case let .analysis(_, _, _, text), let .resumeDraft(_, _, text), let .coverLetterDraft(_, _, text, _):
+        case let .analysis(_, _, _, text, _), let .resumeDraft(_, _, text), let .coverLetterDraft(_, _, text, _):
             RequestText.untrustedBlock("공고 원문", text)
         case .edit, .pdf, .record:
             []

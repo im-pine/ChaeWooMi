@@ -88,7 +88,7 @@ struct DocumentWorkflowIntegrationTests {
         #expect(!session.received.contains { $0.kindLabel == "이력서 초안" })
 
         session.failing = [:]
-        try driver.send(.retry)
+        try driver.send(.retry(supplement: "자격요건: TypeScript 2년"))
         #expect(session.received.map(\.kindLabel) == ["공고 분석", "공고 분석", "이력서 초안"])
         #expect(driver.workflow.phase == .reviewing)
     }

@@ -55,7 +55,7 @@ final class FakeSession {
 
     private func perform(_ request: SessionRequest) throws -> String {
         switch request {
-        case let .analysis(company, _, _, _):
+        case let .analysis(company, _, _, _, _):
             let posting = "# 공고\n\n## 모집 직무\n원문\n\n## 공고 해석\n분석"
             return try write("12 JobOpening/12.1 Active/\(folder(company))/공고.md", posting)
         case let .resumeDraft(company, _, _):

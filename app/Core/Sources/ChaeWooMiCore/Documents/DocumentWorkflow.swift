@@ -72,7 +72,8 @@ public struct DocumentWorkflow: Equatable, Sendable {
         case command(String, userEdited: Bool)
         case approve(userEdited: Bool)
         case archive
-        case retry
+        /// 같은 단계를 다시 요청. 분석 실패면 사용자 보완 글을 붙일 수 있다 (ANL-003)
+        case retry(supplement: String?)
         case cancel
     }
 
@@ -115,7 +116,7 @@ public struct DocumentWorkflow: Equatable, Sendable {
         case let .command(text, edited): return command(text, userEdited: edited)
         case let .approve(edited): return approve(userEdited: edited)
         case .archive: return finish(.archived)
-        case .retry: return retry()
+        case let .retry(supplement): return retry(supplement: supplement)
         case .cancel: return finish(.idle)
         }
     }
@@ -190,10 +191,10 @@ public struct DocumentWorkflow: Equatable, Sendable {
         return requestPDF(input, draft: draft, userEdited: userEdited)
     }
 
-    private mutating func retry() -> [Effect] {
+    private mutating func retry(supplement: String?) -> [Effect] {
         guard case let .failed(failure) = phase, let input else { return [] }
         switch failure.step {
-        case .analysis: return requestAnalysis()
+        case .analysis: return requestAnalysis(supplement: supplement)
         case .draft: return requestDraft()
         case .pdf:
             guard let draft = snapshot?.draft else { return requestDraft() }
@@ -203,12 +204,13 @@ public struct DocumentWorkflow: Equatable, Sendable {
 
     // MARK: - 요청 보내기
 
-    private mutating func requestAnalysis() -> [Effect] {
+    private mutating func requestAnalysis(supplement: String? = nil) -> [Effect] {
         guard let input else { return [] }
         let id = makeID()
         phase = .analyzing(requestID: id)
         let request = SessionRequest.analysis(
-            company: input.company, platform: input.platform, url: input.url, postingText: input.postingText
+            company: input.company, platform: input.platform, url: input.url,
+            postingText: input.postingText, supplement: supplement
         )
         return [.send(request, id: id)]
     }
