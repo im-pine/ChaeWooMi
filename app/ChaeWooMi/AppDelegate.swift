@@ -9,12 +9,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let sessions = SessionHub()
     private(set) lazy var cards = CardStore(settings: settings)
     private(set) lazy var launcher = FloatingController(store: cards)
+    private(set) lazy var documents = DocumentController(settings: settings, sessions: sessions, cards: cards)
     private(set) lazy var settingsWindow = SettingsWindowController { [unowned self] in
         SettingsView(settings: settings, bridge: bridge, sessions: sessions)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         cards.start()
+        cards.documents = documents
+        sessions.onReply = { [unowned self] reply in documents.received(reply) }
         settings.onVaultPathChange = { [unowned self] in
             cards.reloadVault()
             cards.handle(.recheck)

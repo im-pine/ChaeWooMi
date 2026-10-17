@@ -48,15 +48,27 @@ public struct AnalysisWorkflow: Equatable, Sendable {
         if isRunning, analysisDone { phase = .completed }
     }
 
-    public mutating func replied(_ reply: SessionReply) {
-        guard case let .running(id) = phase, reply.id == id, reply.outcome == .failed else { return }
-        phase = .failed(reason: reply.reason ?? "세션이 분석하지 못함", missing: reply.missing)
+    /// `analysisDone`은 회신을 받은 때 다시 읽은 볼트 상태. 완료 회신인데 공고 해석이 없으면 실패로 알린다
+    public mutating func replied(_ reply: SessionReply, analysisDone: Bool) {
+        guard case let .running(id) = phase, reply.id == id else { return }
+        if analysisDone {
+            phase = .completed
+        } else if reply.outcome == .failed {
+            phase = .failed(reason: reply.reason ?? "세션이 분석하지 못함", missing: reply.missing)
+        } else {
+            phase = .failed(reason: "세션은 완료라고 했지만 공고 해석이 없습니다", missing: [])
+        }
     }
 
     /// 실패 뒤 보완 글을 붙여 같은 분석을 다시 요청한다
     public mutating func retry(supplement: String?) -> SessionRequest? {
         guard case .failed = phase else { return nil }
         return request(supplement: supplement)
+    }
+
+    /// 세션이 꺼져 있어 보내지 못함 → 처음으로
+    public mutating func cancel() {
+        if isRunning { phase = .idle }
     }
 
     public var requestID: String? {

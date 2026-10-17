@@ -20,6 +20,8 @@ final class CardStore {
     var notice: String?
 
     @ObservationIgnored private let settings: AppSettings
+    /// 문서 · 분석 진행 (아이콘의 진행 중 · 실패 · 다른 문서 작업 중을 덮어쓴다)
+    @ObservationIgnored weak var documents: DocumentController?
     @ObservationIgnored private lazy var watcher = VaultWatcher { [weak self] in self?.vaultChanged() }
     @ObservationIgnored private var watchedPath: String?
 
@@ -105,19 +107,25 @@ final class CardStore {
         loaded.map { CompanyFolders.find(company: company, in: $0.layout) }
     }
 
-    /// 아이콘 상태 (APP-012). 회사가 확정되지 않았으면 사용 불가
+    /// 아이콘 상태 (APP-012). 볼트 파일 상태 위에 진행 중 · 실패 · 사용 불가를 얹는다
     func taskState(_ kind: TaskKind) -> TaskState {
         let company = confirmedCompany
         return TaskStateRule.state(
             kind,
             folders: company.flatMap(folders(for:)),
-            running: [],
-            failures: [:],
-            unavailableReason: company == nil ? "회사를 먼저 확인하세요" : nil
+            running: documents?.running ?? [],
+            failures: documents?.failures ?? [:],
+            unavailableReason: unavailableReason(kind, company: company)
         )
     }
 
-    /// 공고가 바뀌면 화면 상태를 처음으로. 지원 버튼 가림도 새 공고 탭이 다시 알려 줄 때까지 푼다
+    private func unavailableReason(_ kind: TaskKind, company: String?) -> String? {
+        if company == nil { return "회사를 먼저 확인하세요" }
+        // 수동 카드는 공고 원문이 없어 분석 · 서류를 요청할 수 없다 (APP-018)
+        if model.page == nil { return "공고 원문이 없어 지정 사이트 공고에서만 쓸 수 있습니다" }
+        return documents?.blockedReason(for: kind)
+    }
+
     private func resetView() {
         expanded = false
         collapsed = false
@@ -128,5 +136,6 @@ final class CardStore {
     private func vaultChanged() {
         reloadVault()
         handle(.recheck)
+        documents?.filesChanged()
     }
 }
