@@ -93,7 +93,9 @@ public enum PostingAnalysis {
     static func section(of text: String) -> String? {
         let lines = text.components(separatedBy: .newlines)
         let heading = TaskStateRule.analysisHeading
-        guard let start = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == heading }) else { return nil }
+        guard let start = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == heading }) else {
+            return nil
+        }
         let rest = lines[(start + 1)...]
         let end = rest.firstIndex { $0.hasPrefix("## ") } ?? lines.endIndex
         return lines[(start + 1)..<end].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
