@@ -18,7 +18,7 @@ struct SessionRequestTests {
         #expect(pdf.role == .application)
     }
 
-    @Test("요청은 머리 줄 · 항목 · 비신뢰 자료 블록 순서로 만든다 (실측에서 통한 형식)")
+    @Test("요청은 머리 줄 · 항목 · 회신 형식 · 비신뢰 자료 블록 순서로 만든다")
     func analysisText() {
         let text = SessionRequest.analysis(
             company: "가상전자(주)", platform: "원티드", url: "https://www.wanted.co.kr/wd/300001",
@@ -29,6 +29,11 @@ struct SessionRequestTests {
         회사: 가상전자(주)
         플랫폼: 원티드
         공고 주소: https://www.wanted.co.kr/wd/300001
+        회신: 작업이 끝나면(성공이든 실패든) SendMessage로 이 메시지를 보낸 세션에 아래 형식으로만 한 번 보낸다. 설명 · 요약은 쓰지 않는다
+        [채우미 회신] id=q0 결과=완료
+        파일: <만들거나 고친 파일의 볼트 상대 경로>
+        실패면: [채우미 회신] id=q0 결과=실패 / 다음 줄에 사유: <한 줄> / 누락: <항목, 쉼표로> (있을 때만)
+        이번 작업에서 [CAREER-DB 반영 요청] 블록을 냈다면 회신 아래에 그대로 붙인다
         <<<비신뢰 자료: 공고 원문>>>
         주요업무: React
         <<<비신뢰 자료 끝>>>
@@ -81,7 +86,8 @@ struct SessionRequestTests {
         #expect(edit.contains("수정 명령: 요약을 줄여 주세요"))
         let pdf = SessionRequest.pdf(company: "가상전자", kind: .resume, draftPath: "11 Job/초안.md", userEdited: false)
             .text(id: "q4")
-        #expect(pdf == "[채우미 요청] PDF 생성 id=q4\n회사: 가상전자\n초안: 11 Job/초안.md\n사용자 직접 수정: 없음")
+        #expect(pdf.hasPrefix("[채우미 요청] PDF 생성 id=q4\n회사: 가상전자\n초안: 11 Job/초안.md\n사용자 직접 수정: 없음\n회신:"))
+        #expect(pdf.contains("[채우미 회신] id=q4 결과=완료"))
     }
 
     @Test("지원 기록 요청은 제출일을 YYYY-MM-DD로 보낸다")
@@ -89,14 +95,17 @@ struct SessionRequestTests {
         let text = SessionRequest.record(
             company: "가상전자(주)", role: "프론트엔드", platform: "원티드", submitted: CalendarDay(year: 2026, month: 10, day: 7)!
         ).text(id: "q5")
-        #expect(text.hasSuffix("제출일: 2026-10-07"))
+        #expect(text.contains("제출일: 2026-10-07\n회신:"))
     }
     @Test("분석 재요청에는 사용자 보완 글을 항목으로 붙인다 (비신뢰 블록 밖, ANL-003)")
-    func analysisSupplement() {
+    func analysisSupplement() throws {
         let text = SessionRequest.analysis(
             company: "가상전자", platform: "원티드", url: "u", postingText: "원문", supplement: "자격요건:\nTS 2년"
         ).text(id: "q9")
-        #expect(text.contains("사용자 보완: 자격요건: TS 2년\n<<<비신뢰 자료: 공고 원문>>>"))
+        #expect(text.contains("사용자 보완: 자격요건: TS 2년\n회신:"))
+        // 회신 형식은 비신뢰 블록 밖(앞)에 있어 지시로 읽힌다
+        let block = try #require(text.range(of: "<<<비신뢰 자료: 공고 원문>>>"))
+        #expect(text.range(of: "[채우미 회신] id=q9")!.lowerBound < block.lowerBound)
     }
 }
 
@@ -137,6 +146,27 @@ struct SessionReplyTests {
         """)
         #expect(reply?.file == "초안.md")
         #expect(reply?.careerDBRequest == "[CAREER-DB 반영 요청]\n- 대상: 가상 프로젝트\n- 내용: 새로 확인한 경험")
+    }
+
+    @Test("형식을 따르지 않은 설명문 회신도 요청 id가 있으면 회신이다 (실측: `[공고 분석 id=…] …`)")
+    func looseReply() throws {
+        let text = """
+        [공고 분석 id=a31607d3-1] 가상전자(주)는 앞서 id=b2556876-1로 분석을 마쳤고, 그 결과를 그대로 전달합니다.
+        - 매칭: Strong — React · TypeScript
+        상세: 12 JobOpening/12.1 Active/가상전자/{공고.md, 기업 리서치.md}
+        """
+        let reply = try #require(SessionReply.parse(text))
+        #expect(reply.id == "a31607d3-1")
+        #expect(reply.outcome == .completed)
+        let failed = try #require(SessionReply.parse("[공고 분석 id=q9] 결과=실패\n사유: 원문 없음"))
+        #expect(failed.outcome == .failed)
+        #expect(failed.reason == "원문 없음")
+    }
+
+    @Test("채우미 요청 글을 그대로 돌려받은 것은 회신이 아니다")
+    func echoedRequestIsNotReply() {
+        let request = SessionRequest.analysis(company: "가상전자(주)", platform: "사람인", url: "u", postingText: nil)
+        #expect(SessionReply.parse(request.text(id: "q1")) == nil)
     }
 
     @Test("채우미 회신 머리 줄이 없으면 회신이 아니다")

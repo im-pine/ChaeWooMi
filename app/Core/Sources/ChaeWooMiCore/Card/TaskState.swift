@@ -47,6 +47,23 @@ public enum TaskState: Equatable, Sendable {
 public enum TaskStateRule {
     public static let analysisHeading = "## 공고 해석"
 
+    /// `## 공고 해석`, `## 2. 공고 해석`, `## 2. 공고 해석 (스냅샷 기준)`처럼 번호 · 덧붙임이 있어도 분석 헤딩으로 본다
+    /// (실제 JOB-ANALYSIS 세션이 번호를 붙여 씀)
+    public static func isAnalysisHeading(_ line: String) -> Bool {
+        let text = line.trimmingCharacters(in: .whitespaces)
+        guard text.hasPrefix("## ") else { return false }
+        let number = #"^\d+(\.\d+)*\.?\s*"#
+        let title = text.dropFirst(3).replacingOccurrences(of: number, with: "", options: .regularExpression)
+        return title.hasPrefix("공고 해석")
+    }
+
+    /// 회사 폴더에 `공고.md`가 있음 (세션이 분석 완료를 회신했을 때, 헤딩 이름에 기대지 않고 다음 단계로 간다)
+    public static func postingExists(_ folders: CompanyFolders) -> Bool {
+        folders.companyFolders.contains {
+            FileManager.default.fileExists(atPath: $0.appendingPathComponent("공고.md").path)
+        }
+    }
+
     public static func fileState(_ kind: TaskKind, folders: CompanyFolders) -> TaskState {
         switch kind {
         case .analysis:
@@ -75,8 +92,7 @@ public enum TaskStateRule {
         folders.companyFolders.contains { folder in
             let posting = folder.appendingPathComponent("공고.md")
             guard let text = try? String(contentsOf: posting, encoding: .utf8) else { return false }
-            return text.components(separatedBy: .newlines)
-                .contains { $0.trimmingCharacters(in: .whitespaces) == analysisHeading }
+            return text.components(separatedBy: .newlines).contains(where: isAnalysisHeading)
         }
     }
 

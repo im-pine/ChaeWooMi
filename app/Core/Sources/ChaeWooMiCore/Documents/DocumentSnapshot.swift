@@ -4,14 +4,24 @@ import Foundation
 public struct DocumentSnapshot: Equatable, Sendable {
     /// 회사 폴더 `공고.md`에 `## 공고 해석`이 있음 (ANL-009)
     public let analysisDone: Bool
+    /// 회사 폴더에 `공고.md`가 있음 (분석 완료 회신과 함께 쓴다)
+    public let postingExists: Bool
     /// 가장 최근 연도 산출물 폴더의 초안 `.md`
     public let draft: URL?
     public let draftModified: Date?
     public let pdf: URL?
     public let pdfModified: Date?
 
-    public init(analysisDone: Bool, draft: URL?, draftModified: Date?, pdf: URL?, pdfModified: Date?) {
+    public init(
+        analysisDone: Bool,
+        postingExists: Bool = false,
+        draft: URL?,
+        draftModified: Date?,
+        pdf: URL?,
+        pdfModified: Date?
+    ) {
         self.analysisDone = analysisDone
+        self.postingExists = postingExists || analysisDone
         self.draft = draft
         self.draftModified = draftModified
         self.pdf = pdf
@@ -32,7 +42,8 @@ public struct DocumentSnapshot: Equatable, Sendable {
         let draft = newest(files.filter { $0.pathExtension.lowercased() == "md" })
         let pdf = newest(files.filter { $0.pathExtension.lowercased() == "pdf" })
         return DocumentSnapshot(
-            analysisDone: analysis, draft: draft?.url, draftModified: draft?.date, pdf: pdf?.url, pdfModified: pdf?.date
+            analysisDone: analysis, postingExists: TaskStateRule.postingExists(folders),
+            draft: draft?.url, draftModified: draft?.date, pdf: pdf?.url, pdfModified: pdf?.date
         )
     }
 

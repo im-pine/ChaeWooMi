@@ -66,7 +66,8 @@ struct DocumentWorkflowIntegrationTests {
         #expect(session.received.map(\.kindLabel) == ["공고 분석", "자소서 초안"])
         #expect(driver.workflow.phase == .reviewing)
         #expect(driver.careerCards == ["[CAREER-DB 반영 요청]\n- 대상: 가상 프로젝트\n- 내용: 새 경험"])
-        #expect(!session.received.contains { $0.text(id: "x").contains("CAREER-DB") })
+        // CAREER-DB 세션에는 요청하지 않는다 (역할은 분석 · 자소서뿐)
+        #expect(Set(session.received.map(\.role)) == [.jobAnalysis, .application])
         let draft = try String(contentsOf: try #require(driver.snapshot().draft), encoding: .utf8)
         #expect(draft.contains("## 지원 동기"))
     }
@@ -90,6 +91,19 @@ struct DocumentWorkflowIntegrationTests {
         session.failing = [:]
         try driver.send(.retry(supplement: "자격요건: TypeScript 2년"))
         #expect(session.received.map(\.kindLabel) == ["공고 분석", "공고 분석", "이력서 초안"])
+        #expect(driver.workflow.phase == .reviewing)
+    }
+
+    @Test("실제 세션처럼 `공고 해석` 헤딩 없이 쓰고 설명문으로 회신해도, 공고.md가 생겼으면 이력서 초안으로 넘어간다 (실측 버그)")
+    func realisticAnalysisReply() throws {
+        let session = try FakeSession()
+        defer { withExtendedLifetime(session) {} }
+        session.realisticAnalysis = true
+        var driver = WorkflowDriver(session: session, company: "가상전자(주)", kind: .resume)
+
+        try driver.send(.start(input(.resume), driver.snapshot()))
+
+        #expect(session.received.map(\.kindLabel) == ["공고 분석", "이력서 초안"])
         #expect(driver.workflow.phase == .reviewing)
     }
 

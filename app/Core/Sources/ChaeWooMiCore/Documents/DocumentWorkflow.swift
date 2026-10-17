@@ -91,6 +91,9 @@ public struct DocumentWorkflow: Equatable, Sendable {
             phase = .reviewing
         case (_, .failed):
             effects += fail(reply.reason ?? "세션이 실패를 알림", missing: reply.missing)
+        case (.analyzing, .completed) where snapshot?.postingExists == true:
+            // 분석 완료 회신 + 공고.md가 있으면 헤딩 이름에 기대지 않고 초안 요청으로 (실제 세션은 `## 2. 공고 해석` 등으로 씀)
+            effects += requestDraft()
         case (_, .completed):
             // 회신은 보조 신호. 앱은 회신을 넣기 전에 볼트를 다시 읽어 준다.
             // 그래도 결과 파일이 그대로면 완료로 꾸미지 않고 실패로 알린다 (AGT-007 "응답 지연 시 완료로 오표기 금지")

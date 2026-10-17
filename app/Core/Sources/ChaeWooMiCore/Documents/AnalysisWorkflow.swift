@@ -49,14 +49,15 @@ public struct AnalysisWorkflow: Equatable, Sendable {
     }
 
     /// `analysisDone`은 회신을 받은 때 다시 읽은 볼트 상태. 완료 회신인데 공고 해석이 없으면 실패로 알린다
-    public mutating func replied(_ reply: SessionReply, analysisDone: Bool) {
+    /// `postingExists`: 회사 폴더에 `공고.md`가 있음. 완료 회신 + 공고.md면 헤딩 이름과 상관없이 완료
+    public mutating func replied(_ reply: SessionReply, analysisDone: Bool, postingExists: Bool = false) {
         guard case let .running(id) = phase, reply.id == id else { return }
-        if analysisDone {
+        if analysisDone || (reply.outcome == .completed && postingExists) {
             phase = .completed
         } else if reply.outcome == .failed {
             phase = .failed(reason: reply.reason ?? "세션이 분석하지 못함", missing: reply.missing)
         } else {
-            phase = .failed(reason: "세션은 완료라고 했지만 공고 해석이 없습니다", missing: [])
+            phase = .failed(reason: "세션은 완료라고 했지만 공고.md가 없습니다", missing: [])
         }
     }
 
@@ -101,13 +102,10 @@ public enum PostingAnalysis {
         return nil
     }
 
-    /// `## 공고 해석` 줄부터 다음 `## ` 머리 전까지
+    /// `## 공고 해석`(번호 · 덧붙임 허용) 줄부터 다음 `## ` 머리 전까지
     static func section(of text: String) -> String? {
         let lines = text.components(separatedBy: .newlines)
-        let heading = TaskStateRule.analysisHeading
-        guard let start = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == heading }) else {
-            return nil
-        }
+        guard let start = lines.firstIndex(where: TaskStateRule.isAnalysisHeading) else { return nil }
         let rest = lines[(start + 1)...]
         let end = rest.firstIndex { $0.hasPrefix("## ") } ?? lines.endIndex
         return lines[(start + 1)..<end].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)

@@ -145,3 +145,25 @@ struct TaskStateTests {
         #expect(TaskStateRule.fileState(.resume, folders: folders) == .ready)
     }
 }
+
+@Suite("공고 해석 헤딩")
+struct AnalysisHeadingTests {
+    @Test("번호 · 덧붙임이 있어도 분석 헤딩 (실제 공고.md 형식)", arguments: [
+        ("## 공고 해석", true),
+        ("## 2. 공고 해석", true),
+        ("## 2. 공고 해석 (스냅샷 기준)", true),
+        ("## 2.1 공고 해석", true),
+        ("### 공고 해석", false),
+        ("## 1. 확인된 공고 내용", false),
+        ("공고 해석", false)
+    ])
+    func heading(line: String, expected: Bool) {
+        #expect(TaskStateRule.isAnalysisHeading(line) == expected)
+    }
+
+    @Test("번호 헤딩 아래 분석 내용을 상세에 보인다")
+    func section() {
+        let text = "## 1. 확인된 공고 내용\n원문\n## 2. 공고 해석\n분석 본문\n## 3. 매칭\n표"
+        #expect(PostingAnalysis.section(of: text) == "분석 본문")
+    }
+}

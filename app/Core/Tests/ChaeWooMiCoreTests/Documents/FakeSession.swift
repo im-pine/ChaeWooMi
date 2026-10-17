@@ -13,6 +13,9 @@ final class FakeSession {
     var careerRequest: String?
     /// 지원 기록 요청에 완료라고 회신하지만 12.0을 고치지 않음
     var skipsRecordWrite = false
+    /// 실제 JOB-ANALYSIS 세션처럼: 공고.md를 번호 헤딩(`## 1. 확인된 공고 내용`)으로 쓰고 `공고 해석` 헤딩은 없으며,
+    /// 회신은 00.0.7 형식이 아닌 설명문 `[공고 분석 id=…] …`
+    var realisticAnalysis = false
     private(set) var received: [SessionRequest] = []
     private var clock = Date(timeIntervalSince1970: 1_900_000_000)
 
@@ -35,6 +38,9 @@ final class FakeSession {
             return SessionReply.parse("[채우미 회신] id=\(id) 결과=실패\n사유: \(failure.reason)\(missing)")!
         }
         let path = try perform(request)
+        if realisticAnalysis, case .analysis = request {
+            return SessionReply.parse("[공고 분석 id=\(id)] 분석을 마쳤습니다. 요점: 자격요건이 맞습니다.\n상세: \(path)")!
+        }
         var text = "[채우미 회신] id=\(id) 결과=완료\n파일: \(path)"
         if case .coverLetterDraft = request, let careerRequest { text += "\n\(careerRequest)" }
         return SessionReply.parse(text)!
@@ -58,7 +64,9 @@ final class FakeSession {
     private func perform(_ request: SessionRequest) throws -> String {
         switch request {
         case let .analysis(company, _, _, _, _):
-            let posting = "# 공고\n\n## 모집 직무\n원문\n\n## 공고 해석\n분석"
+            let posting = realisticAnalysis
+                ? "# 공고\n\n## 1. 확인된 공고 내용\n원문\n\n## 2. 사용자 기준 적합성\n판단"
+                : "# 공고\n\n## 모집 직무\n원문\n\n## 공고 해석\n분석"
             return try write("12 JobOpening/12.1 Active/\(folder(company))/공고.md", posting)
         case let .resumeDraft(company, _, _):
             return try write(outputPath(company, "이력서", "md"), "# 이력서\n요약")
