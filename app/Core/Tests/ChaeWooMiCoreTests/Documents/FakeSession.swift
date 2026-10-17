@@ -11,6 +11,8 @@ final class FakeSession {
     var failing: [String: (reason: String, missing: [String])] = [:]
     /// 자소서 초안 회신에 붙일 CAREER-DB 반영 요청
     var careerRequest: String?
+    /// 지원 기록 요청에 완료라고 회신하지만 12.0을 고치지 않음
+    var skipsRecordWrite = false
     private(set) var received: [SessionRequest] = []
     private var clock = Date(timeIntervalSince1970: 1_900_000_000)
 
@@ -74,9 +76,40 @@ final class FakeSession {
             try Data("%PDF-1.4".utf8).write(to: pdf)
             try touch(pdf)
             return pdf.path
-        case .record:
+        case let .record(company, role, platform, submitted):
+            if !skipsRecordWrite { try recordRow(company, role, platform, submitted) }
             return "12 JobOpening/12.0 지원 현황.md"
         }
+    }
+
+    /// JOB-ANALYSIS 지침대로 회사당 1행: 있으면 최근 제출일 · 재지원 가능일을 갱신하고 이전 제출일은 비고로
+    private func recordRow(_ company: String, _ role: String, _ platform: String, _ day: CalendarDay) throws {
+        let url = layout.statusFile
+        var lines = try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n")
+        let key = CompanyName(company).key
+        let row = { (note: String) in
+            "| \(company) | \(role) | \(day) | \(day.addingYear()) | 지원 완료 (\(platform)) | \(note) |"
+        }
+        if let index = lines.firstIndex(where: { cells($0).first.map { CompanyName($0).key } == key }) {
+            let old = cells(lines[index])
+            let previous = [old[5], "이전 지원 \(old[2])"].filter { !$0.isEmpty }.joined(separator: "; ")
+            lines[index] = row(previous)
+        } else {
+            lines.append(row(""))
+        }
+        try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+        try touch(url)
+    }
+
+    private func cells(_ line: String) -> [String] {
+        guard line.hasPrefix("|"), !line.hasPrefix("|---"), !line.hasPrefix("| 회사") else { return [] }
+        return line.split(separator: "|", omittingEmptySubsequences: false).dropFirst().dropLast()
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+
+    /// 12.0을 다시 읽음 (앱이 재조회하는 것)
+    func records() throws -> [ApplicationRecord] {
+        try ApplicationStatusLoader.load(vault: vault.root).result.records
     }
 
     private func folder(_ company: String) -> String {
