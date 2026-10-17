@@ -1,4 +1,5 @@
 /** 확장 ↔ 앱 메시지 규약. 예시는 저장소 루트 `protocol/examples/` (Swift 테스트와 공용). */
+import { configProblems, type SiteConfig } from './siteConfig';
 
 export type HelloMessage = { type: 'hello'; extensionVersion: string };
 
@@ -13,7 +14,10 @@ export type ExtensionToApp = HelloMessage | JobPageMessage;
 
 export type AckMessage = { type: 'ack'; appVersion: string };
 
-export type AppToExtension = AckMessage;
+/** 앱 소유 지원 사이트 설정 (WEB-014) */
+export type SiteConfigMessage = { type: 'siteConfig'; config: SiteConfig };
+
+export type AppToExtension = AckMessage | SiteConfigMessage;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -42,5 +46,9 @@ export function isExtensionToApp(value: unknown): value is ExtensionToApp {
 
 /** 앱이 보낸 메시지 모양 검사. 모르는 메시지는 버린다 */
 export function isAppToExtension(value: unknown): value is AppToExtension {
-  return isRecord(value) && value.type === 'ack' && typeof value.appVersion === 'string';
+  if (!isRecord(value)) return false;
+  if (value.type === 'ack') return typeof value.appVersion === 'string';
+  // 틀린 설정은 받지 않고 지금 설정을 그대로 쓴다
+  if (value.type === 'siteConfig') return configProblems(value.config).length === 0;
+  return false;
 }

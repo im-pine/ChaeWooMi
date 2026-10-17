@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createConnection, type NativePort } from '@/lib/connection';
 import type { ConnectionState } from '@/lib/native';
+import { DEFAULT_CONFIG, type SiteConfig } from '@/lib/siteConfig';
 
 /** 메시지 · 끊김을 직접 일으킬 수 있는 가짜 포트 */
 function fakePort() {
@@ -28,6 +29,7 @@ function fakePort() {
 function setup(lastError?: string) {
   const ports: ReturnType<typeof fakePort>[] = [];
   const states: ConnectionState[] = [];
+  const configs: SiteConfig[] = [];
   const connection = createConnection({
     connectNative: (): NativePort => {
       const port = fakePort();
@@ -37,8 +39,9 @@ function setup(lastError?: string) {
     lastErrorMessage: () => lastError,
     extensionVersion: '0.1.0',
     onState: (state) => states.push(state),
+    onConfig: (config) => configs.push(config),
   });
-  return { connection, ports, states };
+  return { connection, ports, states, configs };
 }
 
 describe('앱 연결 관리', () => {
@@ -80,5 +83,15 @@ describe('앱 연결 관리', () => {
     connection.connect();
     ports[0]?.receive({ type: 'unknown' });
     expect(states).toEqual([{ kind: 'connecting' }]);
+  });
+});
+
+describe('앱이 보낸 설정', () => {
+  it('앱이 보낸 지원 사이트 설정을 넘기고, 틀린 설정은 버린다', () => {
+    const { connection, ports, configs } = setup();
+    connection.connect();
+    ports[0]?.receive({ type: 'siteConfig', config: DEFAULT_CONFIG });
+    ports[0]?.receive({ type: 'siteConfig', config: { version: 9, sites: [] } });
+    expect(configs).toEqual([DEFAULT_CONFIG]);
   });
 });

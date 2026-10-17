@@ -29,3 +29,11 @@ describe('확장 ↔ 앱 메시지 규약 (공용 예시)', () => {
     expect(isAppToExtension([ack])).toBe(false);
   });
 });
+
+describe('지원 사이트 설정 메시지', () => {
+  it('검사를 통과한 설정만 받는다', async () => {
+    const { DEFAULT_CONFIG } = await import('@/lib/siteConfig');
+    expect(isAppToExtension({ type: 'siteConfig', config: DEFAULT_CONFIG })).toBe(true);
+    expect(isAppToExtension({ type: 'siteConfig', config: { version: 1, sites: [] } })).toBe(false);
+  });
+});

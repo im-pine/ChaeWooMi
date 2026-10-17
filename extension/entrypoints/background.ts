@@ -15,6 +15,8 @@ const connection = createConnection({
     state = next;
     void browser.storage.session.set({ connection: state });
   },
+  // 앱 소유 지원 사이트 설정. 공고 인식은 이 값을 쓰고, 없으면 기본값 (WEB-014)
+  onConfig: (config) => void browser.storage.local.set({ siteConfig: config }),
 });
 
 export default defineBackground(() => {

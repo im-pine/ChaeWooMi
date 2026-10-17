@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "sites": [
+    {
+      "id": "saramin",
+      "label": "사람인",
+      "domains": ["saramin.co.kr"],
+      "postingPatterns": ["^/zf_user/jobs/(relay/)?view\\?(.*&)?rec_idx=\\d+"],
+      "completePatterns": [],
+      "company": {
+        "jsonLd": true,
+        "meta": [{ "property": "og:title", "pattern": "^\\[(.+?)\\]" }],
+        "selectors": [".jv_header .title_inner a.company", ".basic_info .company_name"]
+      },
+      "postingText": {
+        "selectors": [".jv_cont.jv_summary", ".jv_cont.jv_detail"],
+        "frames": ["iframe#iframe_content_0"]
+      },
+      "applyButtons": { "selectors": [".btn_apply", ".sri_btn_immediately"], "texts": ["입사지원", "즉시지원"] }
+    },
+    {
+      "id": "jobkorea",
+      "label": "잡코리아",
+      "domains": ["jobkorea.co.kr"],
+      "postingPatterns": ["^/Recruit/GI_Read/\\d+"],
+      "completePatterns": [],
+      "company": {
+        "jsonLd": true,
+        "meta": [{ "property": "og:title", "pattern": "^(.+?) 채용 - " }],
+        "selectors": []
+      },
+      "postingText": { "selectors": ["#details-section"], "frames": [] },
+      "applyButtons": { "selectors": [], "texts": ["즉시 지원", "홈페이지 지원", "지원하기"] }
+    },
+    {
+      "id": "wanted",
+      "label": "원티드",
+      "domains": ["wanted.co.kr"],
+      "postingPatterns": ["^/wd/\\d+"],
+      "completePatterns": [],
+      "company": {
+        "jsonLd": true,
+        "meta": [{ "property": "og:title", "pattern": "^\\[(.+?)\\]" }],
+        "selectors": ["[class*=\"JobHeader__Tools__Company__Link\"]", "[class*=\"CompanyInfo__name\"]"]
+      },
+      "postingText": {
+        "selectors": ["[class*=\"JobDescription_JobDescription\"]", "[class*=\"JobContent\"]"],
+        "frames": []
+      },
+      "applyButtons": { "selectors": [], "texts": ["지원하기"] }
+    }
+  ]
+}
