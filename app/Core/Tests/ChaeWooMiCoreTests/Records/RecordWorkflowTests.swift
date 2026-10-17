@@ -182,6 +182,23 @@ struct RecordWorkflowTests {
         #expect(flow.phase == .idle)
     }
 
+    @Test("공고 제목에서 직무 기본값: 앞 대괄호 회사명만 뗀다", arguments: [
+        ("[가상전자(주)] 프론트엔드 개발자 채용", "프론트엔드 개발자 채용"),
+        ("  [가상상사]웹 개발자 ", "웹 개발자"),
+        ("프론트엔드 개발자 [경력]", "프론트엔드 개발자 [경력]"),
+        ("[가상전자(주)]", ""),
+        ("[닫히지 않은 제목", "[닫히지 않은 제목"),
+        ("", "")
+    ])
+    func roleFromTitle(title: String, role: String) {
+        #expect(Submission.role(fromTitle: title) == role)
+    }
+
+    @Test("제목이 없으면 직무는 빈칸")
+    func roleWithoutTitle() {
+        #expect(Submission.role(fromTitle: nil).isEmpty)
+    }
+
     @Test("카운트다운이 끝났는데 폼 값이 틀리면 요청하지 않고 실패로 알린다")
     func countdownWithBadForm() {
         var form = submission()

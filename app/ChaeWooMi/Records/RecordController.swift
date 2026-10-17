@@ -37,7 +37,7 @@ final class RecordController {
         presenting = true
         let lookup = cards.lookup(page.companies)
         var submission = Submission(
-            company: page.companies.first ?? "", role: Self.role(from: page.title) ?? "",
+            company: page.companies.first ?? "", role: Submission.role(fromTitle: page.title),
             platform: platformLabel(page.site), submitted: .today()
         )
         last = submission
@@ -57,7 +57,7 @@ final class RecordController {
     func draft(company: String) -> Submission {
         let page = cards.model.page
         return Submission(
-            company: company, role: page.flatMap { Self.role(from: $0.title) } ?? "",
+            company: company, role: Submission.role(fromTitle: page?.title),
             platform: page.map { platformLabel($0.site) } ?? "", submitted: .today()
         )
     }
@@ -160,14 +160,5 @@ final class RecordController {
 
     private func platformLabel(_ site: String) -> String {
         SiteConfig.defaultConfig.sites.first { $0.id == site }?.label ?? site
-    }
-
-    /// `[가상전자(주)] 프론트엔드 개발자 채용` → `프론트엔드 개발자 채용` (앞 대괄호 회사명만 뗀다)
-    static func role(from title: String?) -> String? {
-        guard var text = title?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
-        if text.hasPrefix("["), let end = text.firstIndex(of: "]") {
-            text = String(text[text.index(after: end)...]).trimmingCharacters(in: .whitespaces)
-        }
-        return text.isEmpty ? nil : text
     }
 }
