@@ -46,16 +46,16 @@ struct SettingsCheckTests {
 
     @Test("세 세션이 모두 열려 있으면 통과, 하나라도 꺼져 있으면 꺼진 역할 안내로 실패")
     func sessions() {
-        let all = ["job-analysis", "resume", "application"]
+        let all = ["Brain_of_Pine/JobAnalysis", "Brain_of_Pine/Resume", "Brain_of_Pine/Application"]
         #expect(!SettingsCheck.sessionItem(roster: .defaults, listed: all, error: nil).needsAttention)
-        let item = SettingsCheck.sessionItem(roster: .defaults, listed: ["resume"], error: nil)
+        let item = SettingsCheck.sessionItem(roster: .defaults, listed: ["Brain_of_Pine/Resume"], error: nil)
         guard case let .failed(reason) = item.outcome else {
             Issue.record("꺼진 세션이 있는데 통과함")
             return
         }
-        #expect(reason.contains("claude --name job-analysis"))
-        #expect(reason.contains("claude --name application"))
-        #expect(!reason.contains("claude --name resume"))
+        #expect(reason.contains("claude --name Brain_of_Pine/JobAnalysis"))
+        #expect(reason.contains("claude --name Brain_of_Pine/Application"))
+        #expect(!reason.contains("claude --name Brain_of_Pine/Resume"))
     }
 
     @Test("세션 목록을 받지 못하면 그 오류로 실패")
@@ -66,7 +66,7 @@ struct SettingsCheckTests {
 
     @Test("이전 목록이 남아 있어도 목록 확인이 실패했으면 오류로 실패한다")
     func sessionErrorWinsOverStaleList() {
-        let all = ["job-analysis", "resume", "application"]
+        let all = ["Brain_of_Pine/JobAnalysis", "Brain_of_Pine/Resume", "Brain_of_Pine/Application"]
         let item = SettingsCheck.sessionItem(roster: .defaults, listed: all, error: "중계 세션이 응답하지 않습니다")
         #expect(item.outcome == .failed("중계 세션이 응답하지 않습니다"))
     }
