@@ -46,6 +46,13 @@ final class FloatingController {
         return panel.isVisible
     }
 
+    /// 지금 창 크기 그대로 오른쪽 아래로 옮긴다 (크기를 바꾸지 않아 크기 변경 알림을 다시 만들지 않음)
+    private func moveToCorner() {
+        guard !hidden, let panel, let screen = targetScreen else { return }
+        let target = PanelPlacement.bottomRight(size: panel.frame.size, in: screen.visibleFrame)
+        if panel.frame.origin != target.origin { panel.setFrameOrigin(target.origin) }
+    }
+
     /// 마우스가 있는 화면 (다중 모니터, APP-006). 없으면 주 화면
     private var targetScreen: NSScreen? {
         let mouse = NSEvent.mouseLocation
@@ -58,11 +65,13 @@ final class FloatingController {
         host.onResize = { [weak self] in _ = self?.place() }
         panel.contentView = host
         // SwiftUI가 내용에 맞춰 창 크기를 직접 바꾸면(왼쪽 위 고정) 오른쪽 아래로 다시 놓는다.
-        // 런처 → 카드로 커질 때 화면 밖으로 잘리던 문제 (실측: 44×44 자리에서 220×114로 오른쪽 · 아래로 커짐)
+        // 런처 → 카드로 커질 때 화면 밖으로 잘리던 문제 (실측: 44×44 자리에서 220×114로 오른쪽 · 아래로 커짐).
+        // 크기는 건드리지 않고 위치만 옮긴다 — place()로 크기까지 다시 정하면 SwiftUI와 크기를 주고받으며
+        // 크기 변경 알림이 끝없이 되풀이되어 스택이 넘쳤다 (실측 크래시)
         resizeObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didResizeNotification, object: panel, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { _ = self?.place() }
+            MainActor.assumeIsolated { self?.moveToCorner() }
         }
         return panel
     }
