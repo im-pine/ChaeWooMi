@@ -27,20 +27,27 @@ describe('지원 완료 화면 감지 (HIS-017)', () => {
     const doc = parse('<body><button>지원하기</button><span>지원 완료</span></body>');
     expect(isCompletePage(doc, 'https://www.wanted.co.kr/wd/300001', wanted)).toBe(false);
   });
-
 });
 
 describe('지원 완료 화면 감지 — 주소 · 도메인 · 설정 (HIS-017)', () => {
   it('주소가 completePatterns에 맞으면 문구 없이도 완료 화면', () => {
     const site = { ...wanted, completePatterns: ['^/apply/complete'], completeTexts: [] };
-    expect(isCompletePage(parse('<body></body>'), 'https://www.wanted.co.kr/apply/complete?id=1', site)).toBe(true);
-    expect(isCompletePage(parse('<body></body>'), 'https://www.wanted.co.kr/wd/1', site)).toBe(false);
+    expect(
+      isCompletePage(parse('<body></body>'), 'https://www.wanted.co.kr/apply/complete?id=1', site),
+    ).toBe(true);
+    expect(isCompletePage(parse('<body></body>'), 'https://www.wanted.co.kr/wd/1', site)).toBe(
+      false,
+    );
   });
 
   it('완료 화면은 공고 주소가 아니어도(지원 팝업 등) 설정 도메인이면 본다, 다른 도메인 · http는 보지 않는다', () => {
     const done = parse('<body><p>입사지원이 완료되었습니다.</p></body>');
-    expect(domainSite('https://www.saramin.co.kr/zf_user/apply/popup', DEFAULT_CONFIG)?.id).toBe('saramin');
-    expect(completeOnPage(done, 'https://www.saramin.co.kr/zf_user/apply/popup', DEFAULT_CONFIG)).toBe(true);
+    expect(domainSite('https://www.saramin.co.kr/zf_user/apply/popup', DEFAULT_CONFIG)?.id).toBe(
+      'saramin',
+    );
+    expect(
+      completeOnPage(done, 'https://www.saramin.co.kr/zf_user/apply/popup', DEFAULT_CONFIG),
+    ).toBe(true);
     expect(completeOnPage(done, 'https://example.com/done', DEFAULT_CONFIG)).toBe(false);
     expect(completeOnPage(done, 'http://www.saramin.co.kr/done', DEFAULT_CONFIG)).toBe(false);
   });
@@ -52,9 +59,9 @@ describe('지원 완료 화면 감지 — 주소 · 도메인 · 설정 (HIS-017
       sites: [{ ...wanted, completePatterns: ['('] }],
     };
     expect(configProblems(config)).toEqual(['sites[0].completePatterns[0]: 정규식이 아닙니다']);
-    expect(configProblems({ version: 1, sites: [{ ...wanted, completeTexts: undefined }] })).toEqual([
-      'sites[0]: 항목 모양이 다릅니다',
-    ]);
+    expect(
+      configProblems({ version: 1, sites: [{ ...wanted, completeTexts: undefined }] }),
+    ).toEqual(['sites[0]: 항목 모양이 다릅니다']);
   });
 });
 

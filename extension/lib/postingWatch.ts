@@ -10,9 +10,7 @@ export type PageRead = { kind: 'posting'; page: JobPageMessage } | { kind: 'left
 
 /** 콘텐츠 스크립트가 background에 보내는 것 */
 export type PageReport =
-  | PageRead
-  | { kind: 'applyButton'; covering: boolean }
-  | { kind: 'complete' };
+  PageRead | { kind: 'applyButton'; covering: boolean } | { kind: 'complete' };
 
 /** 회사명이 나타날 때까지 기다리는 최대 시간 (사람인은 본문을 나중에 불러옴) */
 export const WAIT_FOR_COMPANY_MS = 5000;

@@ -35,11 +35,7 @@ export type ApplyCompleteMessage = {
 };
 
 export type ExtensionToApp =
-  | HelloMessage
-  | JobPageMessage
-  | PageLeftMessage
-  | ApplyButtonMessage
-  | ApplyCompleteMessage;
+  HelloMessage | JobPageMessage | PageLeftMessage | ApplyButtonMessage | ApplyCompleteMessage;
 
 export type AckMessage = { type: 'ack'; appVersion: string };
 

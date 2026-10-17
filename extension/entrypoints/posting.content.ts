@@ -71,7 +71,11 @@ function watchCompletion(config: SiteConfig, ctx: ContentScriptContext) {
     pending = true;
     ctx.setTimeout(check, 500);
   });
-  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
   ctx.onInvalidated(() => observer.disconnect());
   check();
 }
