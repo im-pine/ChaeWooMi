@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JobPageMessage } from '@/lib/protocol';
+import { sanitizeJobPage } from '@/lib/sanitize';
 import { sameDocument, TabPages } from '@/lib/tabPages';
 
 const page = (company: string): JobPageMessage => ({
@@ -62,19 +63,33 @@ describe('등록 도메인 밖으로 이동', () => {
     expect(tabs.current()).toEqual({ type: 'pageLeft' });
   });
 
-  it('해시만 바뀐 같은 문서의 loading은 공고를 지우지 않는다 (사람인 #seq=0 실측 버그)', () => {
+  it('같은 공고에서 해시가 붙는 loading은 공고를 지우지 않는다 (사람인 #seq=0 실측 버그)', () => {
     const tabs = new TabPages();
     tabs.activate(1);
-    const posting = page('가상전자');
+    // 실제 흐름처럼 콘텐츠 스크립트가 거른 공고 (view_type 등은 지워짐)
+    const raw = 'https://www.saramin.co.kr/zf_user/jobs/relay/view?view_type=list&rec_idx=12345678';
+    const posting = sanitizeJobPage({
+      type: 'jobPage',
+      site: 'saramin',
+      url: raw,
+      companies: ['가상전자(주)'],
+    });
     tabs.posting(1, posting);
-    expect(tabs.navigating(1, `${posting.url}#seq=0`)).toBeNull();
-    expect(tabs.navigating(1, posting.url)).toBeNull();
+    expect(tabs.navigating(1, `${raw}#seq=0`)).toBeNull();
+    expect(tabs.navigating(1, raw)).toBeNull();
     expect(tabs.current()).toEqual(posting);
-    expect(tabs.navigating(1, 'https://www.wanted.co.kr/wd/999')).toEqual({ type: 'pageLeft' });
+    expect(
+      tabs.navigating(
+        1,
+        'https://www.saramin.co.kr/zf_user/jobs/relay/view?view_type=list&rec_idx=99',
+      ),
+    ).toEqual({ type: 'pageLeft' });
   });
 
-  it('같은 문서 판단은 해시만 무시한다', () => {
-    expect(sameDocument('https://a.kr/v?x=1', 'https://a.kr/v?x=1#seq=0')).toBe(true);
-    expect(sameDocument('https://a.kr/v?x=1', 'https://a.kr/v?x=2')).toBe(false);
+  it('같은 공고 주소 판단: 허용 쿼리 · 경로가 같으면 같고, 공고 번호가 다르면 다르다', () => {
+    const base = 'https://www.saramin.co.kr/zf_user/jobs/view?rec_idx=1';
+    expect(sameDocument(base, `${base}&view_type=list#seq=0`)).toBe(true);
+    expect(sameDocument(base, 'https://www.saramin.co.kr/zf_user/jobs/view?rec_idx=2')).toBe(false);
+    expect(sameDocument(base, 'not a url')).toBe(false);
   });
 });

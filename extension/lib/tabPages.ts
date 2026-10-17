@@ -4,14 +4,22 @@ import type {
   ExtensionToApp,
   JobPageMessage,
 } from './protocol';
+import { sanitizeUrl } from './sanitize';
 
 /**
  * 탭마다 마지막 공고 상태를 기억하고, **보고 있는 탭**의 상태만 앱에 보낸다 (WEB-015).
  * 다른 탭으로 옮기면 그 탭의 공고를 보내거나, 공고가 아니면 pageLeft를 보낸다.
  */
-/** 해시(`#…`)만 다르면 같은 문서 */
+/**
+ * 같은 공고 주소인가: 공고 정보와 같은 규칙(허용 쿼리만 · 해시 없음)으로 거른 주소가 같으면.
+ * 저장한 공고 주소는 이미 걸러져 있어 탭 주소(`view_type=…#seq=0`)와 그대로 비교하면 늘 다르다 (실측)
+ */
 export function sameDocument(a: string, b: string): boolean {
-  return a.split('#')[0] === b.split('#')[0];
+  try {
+    return sanitizeUrl(a) === sanitizeUrl(b);
+  } catch {
+    return false;
+  }
 }
 
 export class TabPages {
