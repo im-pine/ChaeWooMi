@@ -11,6 +11,10 @@ const SENSITIVE_PATTERNS: RegExp[] = [
 ];
 
 const MAX_COMPANY_LENGTH = 100;
+const MAX_COMPANIES = 5;
+const MAX_TITLE_LENGTH = 200;
+/** 공고 원문 상한. Chrome → 호스트 메시지는 더 크게 되지만 요청에 붙이기 알맞은 길이로 자른다 */
+const MAX_TEXT_LENGTH = 20_000;
 
 /** 주소에서 허용한 쿼리만 남기고 계정 정보 · 해시를 지운다 */
 export function sanitizeUrl(raw: string): string {
@@ -34,13 +38,20 @@ export function redactSensitive(text: string): string {
  * 정해진 필드만 새 객체로 옮기므로 페이지에서 딸려 온 다른 값(쿠키 · 폼 값 등)은 남지 않는다.
  */
 export function sanitizeJobPage(message: JobPageMessage): JobPageMessage {
-  const company = message.company
-    ? redactSensitive(message.company).trim().slice(0, MAX_COMPANY_LENGTH)
-    : undefined;
+  const companies = message.companies
+    .map((name) => redactSensitive(name).trim().slice(0, MAX_COMPANY_LENGTH))
+    .filter(Boolean)
+    .slice(0, MAX_COMPANIES);
+  const title = message.title ? redactSensitive(message.title).slice(0, MAX_TITLE_LENGTH) : '';
+  const text = message.postingText
+    ? redactSensitive(message.postingText).slice(0, MAX_TEXT_LENGTH)
+    : '';
   return {
     type: 'jobPage',
     site: message.site,
     url: sanitizeUrl(message.url),
-    ...(company ? { company } : {}),
+    companies,
+    ...(title ? { title } : {}),
+    ...(text ? { postingText: text } : {}),
   };
 }

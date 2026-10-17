@@ -87,8 +87,8 @@ final class BrowserBridge {
             connections.hello(id, version: version)
             try? connection.send(AppToExtension.ack(appVersion: Self.appVersion))
             try? connection.send(AppToExtension.siteConfig(siteConfig.config))
-        case .jobPage:
-            // 공고 처리는 1단계(재지원 주의)에서 붙인다
+        case .jobPage, .pageLeft, .applyButton:
+            // 카드 표시는 플로팅 카드 PR에서 붙인다
             break
         }
     }

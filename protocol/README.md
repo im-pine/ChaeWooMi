@@ -6,7 +6,9 @@ TypeScript(`extension/lib/protocol.ts`)와 Swift(`app/Core`) 테스트가 **같�
 | 파일 | 방향 | 뜻 |
 | --- | --- | --- |
 | `examples/hello.json` | 확장 → 앱 | 연결 직후 인사 (확장 버전) |
-| `examples/job-page.json` | 확장 → 앱 | 지정 사이트 공고 정보 (민감 정보를 걸러 낸 뒤) |
+| `examples/job-page.json` | 확장 → 앱 | 지정 사이트 공고: 회사명 후보(구조화 데이터 → 메타 → DOM 순, 비면 추출 실패) · 제목 · 공고 원문(없으면 필드 없음). 민감 정보를 걸러 낸 뒤 |
+| `examples/page-left.json` | 확장 → 앱 | 공고가 아닌 페이지 · 다른 탭으로 옮김 (이전 회사 결과 지우기) |
+| `examples/apply-button.json` | 확장 → 앱 | 지원 버튼이 화면 오른쪽 아래 카드 자리를 가리는지 (바뀔 때만) |
 | `examples/ack.json` | 앱 → 확장 | 인사 응답 (앱 버전) |
 | `sites.default.json` | 앱 → 확장 (`{"type":"siteConfig","config":…}`) | 지원 사이트 설정 기본값 (WEB-014). 앱은 `~/Library/Application Support/ChaeWooMi/sites.json`을 쓰고, 없으면 이 값으로 만든다 |
 
