@@ -39,6 +39,8 @@ targets:
     type: tool
     platform: macOS
     sources: [Host]
+    dependencies:
+      - package: ChaeWooMiCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.impine.chaewoomi.host
