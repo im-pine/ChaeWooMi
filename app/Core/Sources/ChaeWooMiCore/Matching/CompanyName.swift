@@ -13,8 +13,9 @@ public struct CompanyName: Hashable, Sendable {
 
     /// 법인 표기(`(주)` · `㈜` · `주식회사` · `(유)` · `유한회사`)를 지우고, 글자 · 숫자만 남겨 소문자로 바꾼다
     public static func normalize(_ name: String) -> String {
-        var text = name.applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? name
-        text = text.precomposedStringWithCanonicalMapping
+        // macOS 파일 이름은 한글이 자모로 나뉜 NFD다. 먼저 합치지 않으면 전각 → 반각 변환이 자모를 반각 자모로 바꾼다
+        let composed = name.precomposedStringWithCanonicalMapping
+        var text = composed.applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? composed
         for mark in legalMarks {
             text = text.replacingOccurrences(of: mark, with: "")
         }
