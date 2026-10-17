@@ -64,6 +64,13 @@ struct SettingsCheckTests {
         #expect(item.outcome == .failed("중계 세션이 응답하지 않습니다"))
     }
 
+    @Test("이전 목록이 남아 있어도 목록 확인이 실패했으면 오류로 실패한다")
+    func sessionErrorWinsOverStaleList() {
+        let all = ["job-analysis", "resume", "application"]
+        let item = SettingsCheck.sessionItem(roster: .defaults, listed: all, error: "중계 세션이 응답하지 않습니다")
+        #expect(item.outcome == .failed("중계 세션이 응답하지 않습니다"))
+    }
+
     @Test("브라우저는 연결됨만 통과")
     func browser() {
         #expect(!SettingsCheck.browserItem(.connected(extensionVersion: "0.1.0")).needsAttention)

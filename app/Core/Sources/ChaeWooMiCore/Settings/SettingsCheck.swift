@@ -59,8 +59,11 @@ public enum SettingsCheck {
         pathFailed("볼트 경로를 지정하세요")
     }
 
-    /// 세 역할 세션이 모두 연결돼야 통과. 목록을 못 받았으면 그 오류를 낸다
+    /// 세 역할 세션이 모두 연결돼야 통과. 목록 확인이 실패했으면 이전 목록이 있어도 그 오류로 실패한다
     public static func sessionItem(roster: SessionRoster, listed: [String]?, error: String?) -> SettingsCheckItem {
+        if let error {
+            return SettingsCheckItem(kind: .sessions, outcome: .failed(error))
+        }
         guard let listed else {
             return SettingsCheckItem(kind: .sessions, outcome: .failed(error ?? "세션 목록을 받지 못했습니다"))
         }
