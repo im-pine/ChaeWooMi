@@ -83,6 +83,32 @@ struct SessionRoleTests {
     }
 }
 
+@Suite("세션 목록 식별자")
+struct SessionListedNameTests {
+    @Test("목록 이름 끝의 짧은 식별자를 떼고 비교하고, 보낼 때는 식별자까지 쓴다 (실측)")
+    func identifierSuffix() {
+        let listed = ["cwm-qa-application [88061b]", "Brain_of_Pine/Resume [9d13a3]", "brain-of-pine-09 [e3d082]"]
+        let decision = SessionRequestGate.decide(role: .resume, roster: .defaults, listed: listed)
+        #expect(decision == .send(sessionName: "Brain_of_Pine/Resume [9d13a3]"))
+        let availability = SessionAvailability.resolve(role: .resume, roster: .defaults, listed: listed)
+        #expect(availability.guidance(for: .resume) == "이력서 (RESUME) 세션 `Brain_of_Pine/Resume` 연결됨")
+    }
+
+    @Test("식별자가 아닌 괄호 글자는 이름의 일부로 둔다")
+    func notIdentifier() {
+        #expect(SessionAvailability.baseName("resume [old]") == "resume [old]")
+        #expect(SessionAvailability.baseName("resume") == "resume")
+        #expect(SessionAvailability.baseName("Brain_of_Pine/Resume [9D13A3]") == "Brain_of_Pine/Resume")
+    }
+
+    @Test("식별자를 뗀 이름이 정확히 같아야 연결로 본다")
+    func exactAfterStrip() {
+        let listed = ["Brain_of_Pine/Resume-old [9d13a3]"]
+        let decision = SessionRequestGate.decide(role: .resume, roster: .defaults, listed: listed)
+        guard case .refuse = decision else { Issue.record("\(decision)"); return }
+    }
+}
+
 @Suite("세션 이름 기본값 옮기기")
 struct SessionRosterMigrationTests {
     @Test("기본 이름은 Brain_of_Pine/역할 형식이다")
