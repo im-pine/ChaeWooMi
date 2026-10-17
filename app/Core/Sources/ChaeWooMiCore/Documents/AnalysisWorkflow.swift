@@ -59,6 +59,11 @@ public struct AnalysisWorkflow: Equatable, Sendable {
         return request(supplement: supplement)
     }
 
+    /// 세션이 꺼져 있어 보내지 못함 → 처음으로
+    public mutating func cancel() {
+        if isRunning { phase = .idle }
+    }
+
     public var requestID: String? {
         if case let .running(id) = phase { return id }
         return nil

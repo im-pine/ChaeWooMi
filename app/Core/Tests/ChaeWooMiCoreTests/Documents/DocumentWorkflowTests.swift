@@ -194,4 +194,14 @@ struct DocumentWorkflowTests {
         _ = flow.handle(.reply(other))
         #expect(flow.phase == .drafting(requestID: "t-1"))
     }
+
+    @Test("초안 있음 아이콘은 세션 요청 없이 검토 모달만 다시 연다 (DOC-024 이후 재개)")
+    func reopenDraft() {
+        var flow = DocumentWorkflow(idPrefix: "t")
+        let existing = snapshot(analysis: true, draft: Date(timeIntervalSince1970: 5))
+        let effects = flow.handle(.reopen(input(.resume), existing))
+        #expect(effects == [.openReview(URL(fileURLWithPath: "/v/초안.md"))])
+        #expect(flow.phase == .reviewing)
+        #expect(flow.handle(.reopen(input(.resume), snapshot(analysis: true))).isEmpty)
+    }
 }

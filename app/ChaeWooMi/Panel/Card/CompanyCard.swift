@@ -14,7 +14,7 @@ struct CompanyCard: View {
             CompanyHeader(company: company.isEmpty ? "회사 확인 필요" : company, source: source, expanded: $store.expanded)
             ReapplyBadge(lookup: lookup) { store.reloadVault(); store.handle(.recheck) }
             TaskIcons(state: store.taskState) { kind, action in handle(kind, action) }
-            if let notice = store.notice {
+            if let notice = store.notice ?? store.documents?.notice {
                 Text(notice).font(.system(size: 10)).foregroundStyle(.secondary)
             }
             if store.expanded, !company.isEmpty {
@@ -25,15 +25,18 @@ struct CompanyCard: View {
         .cardBackground()
     }
 
-    /// 아이콘 클릭 분기 (APP-017). 세션 요청 · 모달은 2단계에서 붙인다 (AI 결정: 1단계는 안내만)
+    /// 아이콘 클릭 분기 (APP-017): 시작 전 = 요청, 진행 중 = 진행 상세, 초안 있음 = 검토 모달, 완료 = 결과 상세(재요청 없음)
     private func handle(_ kind: TaskKind, _ action: TaskAction) {
-        switch action {
-        case .start, .openReview, .showProgress:
-            store.notice = "\(kind.label) 요청은 다음 단계에서 연결됩니다"
-        case .showResult:
-            store.expanded = true
-        case let .showFailure(reason), let .explain(reason):
-            store.notice = reason
+        store.notice = nil
+        switch (kind, action) {
+        case (.analysis, .start): store.documents?.startAnalysis()
+        case (.resume, .start): store.documents?.startDocument(.resume)
+        case (.coverLetter, .start): store.documents?.questionsWindow.show()
+        case (.resume, .openReview): store.documents?.reopenDraft(.resume)
+        case (.coverLetter, .openReview): store.documents?.reopenDraft(.coverLetter)
+        case (_, .showProgress), (_, .showResult), (_, .showFailure): store.expanded = true
+        case let (_, .explain(reason)): store.notice = reason
+        case (.analysis, .openReview): store.expanded = true
         }
     }
 }
@@ -50,6 +53,9 @@ struct DetailSection: View {
             Text("문서").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
             ForEach(TaskKind.allCases, id: \.self) { kind in
                 row(kind.label, store.taskState(kind).label)
+            }
+            if let documents = store.documents {
+                DocumentDetail(store: store, documents: documents, company: company)
             }
             folderLinks
         }

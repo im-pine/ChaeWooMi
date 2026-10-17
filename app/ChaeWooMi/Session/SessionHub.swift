@@ -31,16 +31,19 @@ final class SessionHub {
         }
     }
 
-    /// 받는 세션이 열려 있을 때만 요청을 보낸다. 꺼져 있으면 보내지 않고 안내를 돌려준다
-    func send(_ text: String, to role: SessionRole, roster: SessionRoster) async -> String? {
+    /// 역할 세션 회신 (`[채우미 회신]`). 다른 글은 버린다
+    @ObservationIgnored var onReply: (@MainActor (SessionReply) -> Void)?
+
+    /// 받는 세션이 열려 있을 때만 요청을 보낸다 (AGT-004). 꺼져 있으면 보내지 않고 안내를 돌려준다
+    func send(_ request: SessionRequest, id: String, roster: SessionRoster) async -> String? {
         await refresh()
         guard let listed else { return lastError }
-        switch SessionRequestGate.decide(role: role, roster: roster, listed: listed) {
+        switch SessionRequestGate.decide(role: request.role, roster: roster, listed: listed) {
         case let .refuse(guidance):
             return guidance
         case let .send(sessionName):
             do {
-                try await startedRelay().send(id: UUID().uuidString, to: sessionName, text: text)
+                try await startedRelay().send(id: id, to: sessionName, text: request.text(id: id))
                 return nil
             } catch {
                 return Self.describe(error)
@@ -65,7 +68,17 @@ final class SessionHub {
         let client = RelayClient(launch: RelayLaunch(executable: executable, workingDirectory: folder))
         try await client.start()
         relay = client
+        listenReplies(client)
         return client
+    }
+
+    private func listenReplies(_ client: RelayClient) {
+        Task { [weak self] in
+            for await reply in client.replies {
+                guard let parsed = SessionReply.parse(reply.text) else { continue }
+                await MainActor.run { self?.onReply?(parsed) }
+            }
+        }
     }
 
     private enum HubError: Error {

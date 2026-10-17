@@ -65,6 +65,8 @@ public struct DocumentWorkflow: Equatable, Sendable {
 
     public enum Event: Equatable, Sendable {
         case start(Input, DocumentSnapshot)
+        /// 이미 있는 초안(초안 있음 아이콘)을 검토 모달로 다시 연다. 세션 요청 없음
+        case reopen(Input, DocumentSnapshot)
         /// 볼트 파일이 바뀜 (FSEvents)
         case files(DocumentSnapshot)
         case reply(SessionReply)
@@ -111,6 +113,7 @@ public struct DocumentWorkflow: Equatable, Sendable {
     public mutating func handle(_ event: Event) -> [Effect] {
         switch event {
         case let .start(input, snapshot): return start(input, snapshot)
+        case let .reopen(input, snapshot): return reopen(input, snapshot)
         case let .files(snapshot): return filesChanged(snapshot)
         case let .reply(reply): return replied(reply)
         case let .command(text, edited): return command(text, userEdited: edited)
@@ -131,6 +134,15 @@ public struct DocumentWorkflow: Equatable, Sendable {
         careerRequests = []
         // 분석이 이미 있으면 분석 요청을 건너뛴다 (ANL-009)
         return snapshot.analysisDone ? requestDraft() : requestAnalysis()
+    }
+
+    private mutating func reopen(_ input: Input, _ snapshot: DocumentSnapshot) -> [Effect] {
+        guard phase == .idle || isFinished, let draft = snapshot.draft else { return [] }
+        self.input = input
+        self.snapshot = snapshot
+        commands = []
+        phase = .reviewing
+        return [.openReview(draft)]
     }
 
     private mutating func filesChanged(_ snapshot: DocumentSnapshot) -> [Effect] {
