@@ -94,7 +94,11 @@ final class DocumentController {
     }
 
     func received(_ reply: SessionReply) {
-        if reply.id == analysis.requestID { analysis.replied(reply) }
+        // 회신이 FSEvents보다 먼저 올 수 있어, 판정 전에 볼트를 다시 읽는다
+        filesChanged()
+        if reply.id == analysis.requestID, let company = analysisCompany {
+            analysis.replied(reply, analysisDone: analysisDone(company))
+        }
         run(workflow: .reply(reply))
     }
 

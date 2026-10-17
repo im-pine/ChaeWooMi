@@ -28,7 +28,7 @@ struct AnalysisWorkflowTests {
         var flow = AnalysisWorkflow(idPrefix: "a")
         _ = flow.start(input, analysisDone: false)
         let reply = try #require(SessionReply.parse("[채우미 회신] id=a-1 결과=실패\n사유: 필수 자격 없음\n누락: 자격요건"))
-        flow.replied(reply)
+        flow.replied(reply, analysisDone: false)
         #expect(flow.phase == .failed(reason: "필수 자격 없음", missing: ["자격요건"]))
         let retry = flow.retry(supplement: "자격요건: TypeScript 2년")
         #expect(retry?.text(id: "x").contains("사용자 보완: 자격요건: TypeScript 2년") == true)
@@ -40,5 +40,17 @@ struct AnalysisWorkflowTests {
         let text = "# 공고\n## 모집 직무\n원문\n## 공고 해석\n요구사항 정리\n매칭 표\n## Resume 전달사항\n전달"
         #expect(PostingAnalysis.section(of: text) == "요구사항 정리\n매칭 표")
         #expect(PostingAnalysis.section(of: "# 공고\n원문만") == nil)
+    }
+
+    @Test("완료 회신인데 공고 해석이 없으면 실패, 있으면 완료")
+    func completedReply() throws {
+        var flow = AnalysisWorkflow(idPrefix: "a")
+        _ = flow.start(input, analysisDone: false)
+        let reply = try #require(SessionReply.parse("[채우미 회신] id=a-1 결과=완료\n파일: 공고.md"))
+        var missing = flow
+        missing.replied(reply, analysisDone: false)
+        #expect(missing.phase == .failed(reason: "세션은 완료라고 했지만 공고 해석이 없습니다", missing: []))
+        flow.replied(reply, analysisDone: true)
+        #expect(flow.phase == .completed)
     }
 }

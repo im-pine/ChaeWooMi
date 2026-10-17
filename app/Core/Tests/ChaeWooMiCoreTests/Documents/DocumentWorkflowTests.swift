@@ -166,13 +166,30 @@ struct DocumentWorkflowTests {
         #expect(flow.commands.count == 1)
     }
 
-    @Test("회신이 완료여도 결과 파일이 없으면 완료로 보지 않는다 (AGT-007)")
+    @Test("회신이 완료여도 결과 파일이 없으면 완료로 꾸미지 않고 실패로 알린다 (AGT-007)")
     func replyWithoutFile() throws {
         var flow = DocumentWorkflow(idPrefix: "t")
         _ = flow.handle(.start(input(.resume), snapshot(analysis: true)))
         let reply = try #require(SessionReply.parse("[채우미 회신] id=t-1 결과=완료\n파일: 초안.md"))
+        let effects = flow.handle(.reply(reply))
+        guard case let .failed(failure) = flow.phase else { Issue.record("\(flow.phase)"); return }
+        #expect(failure.step == .draft)
+        #expect(effects == [.releaseLock])
+    }
+
+    @Test("수정 명령에 완료 회신이 왔는데 초안이 그대로면 실패로 표시하고 잠금을 푼다 (실측: 내용이 같은 수정)")
+    func commandWithoutChange() throws {
+        var flow = DocumentWorkflow(idPrefix: "t")
+        let drafted = snapshot(analysis: true, draft: Date(timeIntervalSince1970: 10))
+        _ = flow.handle(.start(input(.resume), snapshot(analysis: true)))
+        _ = flow.handle(.files(drafted))
+        _ = flow.handle(.command("요약 제목", userEdited: false))
+        _ = flow.handle(.files(drafted))
+        let reply = try #require(SessionReply.parse("[채우미 회신] id=t-2 결과=완료\n파일: 초안.md"))
         _ = flow.handle(.reply(reply))
-        #expect(flow.phase == .drafting(requestID: "t-1"))
+        #expect(flow.phase == .reviewing)
+        #expect(!flow.editingLocked)
+        #expect(flow.commands.map(\.status) == [.failed("세션은 완료라고 했지만 초안이 바뀌지 않았습니다")])
     }
 
     @Test("PDF가 초안보다 오래됐으면 완료가 아니다 (QA-059 · DOC-013)")
