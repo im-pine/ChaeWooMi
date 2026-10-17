@@ -19,18 +19,37 @@ public struct SessionReply: Equatable, Sendable {
     static let header = "[채우미 회신]"
     static let careerMarker = "[CAREER-DB 반영 요청]"
 
-    /// 회신 글을 해석한다. 머리 줄이 없으면 nil (채우미 회신이 아님)
+    /// 회신 글을 해석한다. 정해진 머리 줄(`[채우미 회신] id=… 결과=…`)이 없어도 요청 id(`id=…`)가 있으면 회신으로 본다 —
+    /// 실제 역할 세션이 `[공고 분석 id=…] …` 같은 설명문으로 회신했다. 이때 `결과=실패`가 없으면 완료로 본다.
+    /// id가 없거나 채우미 요청 글 자체면 nil
     public static func parse(_ text: String) -> SessionReply? {
+        // 요청 글에는 회신 형식이 들어 있어, 요청을 그대로 돌려받으면 회신으로 오인할 수 있다
+        guard !text.contains(requestHeader) else { return nil }
         let lines = text.components(separatedBy: .newlines)
-        guard let headIndex = lines.firstIndex(where: { $0.contains(header) }),
-              let fields = headFields(lines[headIndex]),
-              let id = fields["id"], let result = fields["결과"] else { return nil }
-        let body = lines[(headIndex + 1)...]
+        if let headIndex = lines.firstIndex(where: { $0.contains(header) }),
+           let fields = headFields(lines[headIndex]),
+           let id = fields["id"], let result = fields["결과"] {
+            return reply(id: id, completed: result == "완료", body: lines[(headIndex + 1)...])
+        }
+        guard let id = looseID(in: text) else { return nil }
+        return reply(id: id, completed: !text.contains("결과=실패"), body: lines[...])
+    }
+
+    static let requestHeader = "[채우미 요청]"
+
+    /// 글 안 처음 나오는 `id=<요청 id>`
+    private static func looseID(in text: String) -> String? {
+        let pattern = #"id=[A-Za-z0-9][A-Za-z0-9_-]*"#
+        guard let range = text.range(of: pattern, options: .regularExpression) else { return nil }
+        return String(text[range].dropFirst(3))
+    }
+
+    private static func reply(id: String, completed: Bool, body: ArraySlice<String>) -> SessionReply {
         let careerStart = body.firstIndex { $0.contains(careerMarker) }
         let plain = careerStart.map { body[..<$0] } ?? body
         return SessionReply(
             id: id,
-            outcome: result == "완료" ? .completed : .failed,
+            outcome: completed ? .completed : .failed,
             file: value("파일", in: plain),
             reason: value("사유", in: plain),
             missing: value("누락", in: plain).map(splitList) ?? [],

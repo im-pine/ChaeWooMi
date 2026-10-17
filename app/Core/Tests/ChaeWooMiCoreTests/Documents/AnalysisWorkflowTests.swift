@@ -49,7 +49,7 @@ struct AnalysisWorkflowTests {
         let reply = try #require(SessionReply.parse("[채우미 회신] id=a-1 결과=완료\n파일: 공고.md"))
         var missing = flow
         missing.replied(reply, analysisDone: false)
-        #expect(missing.phase == .failed(reason: "세션은 완료라고 했지만 공고 해석이 없습니다", missing: []))
+        #expect(missing.phase == .failed(reason: "세션은 완료라고 했지만 공고.md가 없습니다", missing: []))
         flow.replied(reply, analysisDone: true)
         #expect(flow.phase == .completed)
     }

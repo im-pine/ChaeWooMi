@@ -33,7 +33,8 @@ public enum SessionRequest: Equatable, Sendable {
 
     /// 세션에 보낼 글 (글자 그대로 전달된다)
     public func text(id: String) -> String {
-        ([RequestText.header(kindLabel, id: id)] + fields + untrusted).joined(separator: "\n")
+        ([RequestText.header(kindLabel, id: id)] + fields + RequestText.replyFormat(id: id) + untrusted)
+            .joined(separator: "\n")
     }
 
     private var fields: [String] {
@@ -105,6 +106,18 @@ public struct CoverLetterQuestion: Equatable, Sendable {
 
 enum RequestText {
     static let untrustedEnd = "<<<비신뢰 자료 끝>>>"
+
+    /// 회신 형식을 요청마다 붙인다 (00.0.7 §4). 지침 링크만으로는 실제 세션이 형식을 따르지 않아 채우미가 완료를 알아보지 못했다 (실측).
+    /// 비신뢰 자료 블록 앞에 두어 자료가 아닌 지시로 읽히게 한다
+    static func replyFormat(id: String) -> [String] {
+        [
+            "회신: 작업이 끝나면(성공이든 실패든) SendMessage로 이 메시지를 보낸 세션에 아래 형식으로만 한 번 보낸다. 설명 · 요약은 쓰지 않는다",
+            "[채우미 회신] id=\(id) 결과=완료",
+            "파일: <만들거나 고친 파일의 볼트 상대 경로>",
+            "실패면: [채우미 회신] id=\(id) 결과=실패 / 다음 줄에 사유: <한 줄> / 누락: <항목, 쉼표로> (있을 때만)",
+            "이번 작업에서 [CAREER-DB 반영 요청] 블록을 냈다면 회신 아래에 그대로 붙인다"
+        ]
+    }
 
     static func header(_ kind: String, id: String) -> String {
         "[채우미 요청] \(kind) id=\(id)"

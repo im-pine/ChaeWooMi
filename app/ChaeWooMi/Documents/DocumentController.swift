@@ -97,7 +97,7 @@ final class DocumentController {
         // 회신이 FSEvents보다 먼저 올 수 있어, 판정 전에 볼트를 다시 읽는다
         filesChanged()
         if reply.id == analysis.requestID, let company = analysisCompany {
-            analysis.replied(reply, analysisDone: analysisDone(company))
+            analysis.replied(reply, analysisDone: analysisDone(company), postingExists: postingExists(company))
         }
         run(workflow: .reply(reply))
     }
@@ -172,6 +172,10 @@ final class DocumentController {
             kind: kind, company: company, platform: platformLabel(page.site), url: page.url,
             postingText: page.postingText, questions: questions
         )
+    }
+
+    private func postingExists(_ company: String) -> Bool {
+        cards.folders(for: company).map(TaskStateRule.postingExists) ?? false
     }
 
     private func analysisDone(_ company: String) -> Bool {
