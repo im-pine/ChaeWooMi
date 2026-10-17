@@ -22,7 +22,24 @@ export type PageLeftMessage = { type: 'pageLeft' };
 /** 지원 버튼이 카드 자리를 가리는가 (APP-015) */
 export type ApplyButtonMessage = { type: 'applyButton'; covering: boolean };
 
-export type ExtensionToApp = HelloMessage | JobPageMessage | PageLeftMessage | ApplyButtonMessage;
+/**
+ * 지원 완료 화면 감지 (HIS-017). 완료 화면은 공고 주소가 아닐 수 있어 가장 최근 공고의 회사 정보를 싣는다.
+ * 앱이 5초 카운트다운 뒤 12.0 기록을 요청한다. 공고 원문은 싣지 않는다
+ */
+export type ApplyCompleteMessage = {
+  type: 'applyComplete';
+  site: string;
+  url: string;
+  companies: string[];
+  title?: string;
+};
+
+export type ExtensionToApp =
+  | HelloMessage
+  | JobPageMessage
+  | PageLeftMessage
+  | ApplyButtonMessage
+  | ApplyCompleteMessage;
 
 export type AckMessage = { type: 'ack'; appVersion: string };
 
@@ -64,6 +81,13 @@ export function isExtensionToApp(value: unknown): value is ExtensionToApp {
       return true;
     case 'applyButton':
       return typeof value.covering === 'boolean';
+    case 'applyComplete':
+      return (
+        typeof value.site === 'string' &&
+        typeof value.url === 'string' &&
+        isStrings(value.companies) &&
+        isOptionalString(value.title)
+      );
     default:
       return false;
   }

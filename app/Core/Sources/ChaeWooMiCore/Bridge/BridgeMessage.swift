@@ -9,6 +9,8 @@ public enum ExtensionToApp: Equatable, Sendable {
     case pageLeft
     /// 지원 버튼이 카드 자리를 가리는가 (APP-015)
     case applyButton(covering: Bool)
+    /// 지원 완료 화면 감지 (HIS-017). 가장 최근 공고의 사이트 · 주소 · 회사명 후보 · 제목 (공고 원문은 없음)
+    case applyComplete(JobPage)
 }
 
 public struct JobPage: Codable, Equatable, Sendable {
@@ -51,6 +53,8 @@ extension ExtensionToApp: Codable {
             self = .pageLeft
         case "applyButton":
             self = .applyButton(covering: try container.decode(Bool.self, forKey: .covering))
+        case "applyComplete":
+            self = .applyComplete(try JobPage(from: decoder))
         case let other:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "모르는 type: \(other)")
         }
@@ -70,6 +74,9 @@ extension ExtensionToApp: Codable {
         case let .applyButton(covering):
             try container.encode("applyButton", forKey: .type)
             try container.encode(covering, forKey: .covering)
+        case let .applyComplete(page):
+            try container.encode("applyComplete", forKey: .type)
+            try page.encode(to: encoder)
         }
     }
 }

@@ -12,6 +12,7 @@ export type Site = {
   domains: string[];
   postingPatterns: string[];
   completePatterns: string[];
+  completeTexts: string[];
   company: { jsonLd: boolean; meta: MetaRule[]; selectors: string[] };
   postingText: { selectors: string[]; frames: string[] };
   applyButtons: { selectors: string[]; texts: string[] };
@@ -45,9 +46,11 @@ function siteProblems(site: Site, path: string): string[] {
   });
   if (site.postingPatterns.length === 0)
     problems.push(`${path}.postingPatterns: 공고 주소 패턴이 없습니다`);
-  site.postingPatterns.forEach((pattern, index) => {
-    if (!isRegex(pattern)) problems.push(`${path}.postingPatterns[${index}]: 정규식이 아닙니다`);
-  });
+  (['postingPatterns', 'completePatterns'] as const).forEach((field) =>
+    site[field].forEach((pattern, index) => {
+      if (!isRegex(pattern)) problems.push(`${path}.${field}[${index}]: 정규식이 아닙니다`);
+    }),
+  );
   return problems;
 }
 
@@ -66,7 +69,7 @@ function hasShape(site: unknown): site is Site {
   return (
     typeof site.id === 'string' &&
     typeof site.label === 'string' &&
-    ['domains', 'postingPatterns', 'completePatterns'].every((field) =>
+    ['domains', 'postingPatterns', 'completePatterns', 'completeTexts'].every((field) =>
       isStringArray(site[field]),
     ) &&
     isRecord(company) &&
@@ -93,6 +96,21 @@ export function configProblems(value: unknown): string[] {
 }
 
 const onDomain = (host: string, domain: string) => host === domain || host.endsWith(`.${domain}`);
+
+/** 지원 완료 화면은 공고 주소가 아닐 수 있어(지원 팝업 · 완료 페이지) 도메인으로만 사이트를 찾는다 */
+export function domainSite(url: string, config: SiteConfig): Site | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:') return null;
+  return (
+    config.sites.find((site) => site.domains.some((domain) => onDomain(parsed.hostname, domain))) ??
+    null
+  );
+}
 
 /** 주소가 설정의 공고 페이지면 그 사이트, 아니면 null (URL은 공고 페이지 판단에만 쓴다) */
 export function postingSite(url: string, config: SiteConfig): Site | null {

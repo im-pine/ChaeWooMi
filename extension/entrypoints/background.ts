@@ -63,7 +63,9 @@ function handleReport(report: PageReport, tabId: number, post: (message: Extensi
       ? tabs.posting(tabId, report.page)
       : report.kind === 'left'
         ? tabs.left(tabId)
-        : tabs.applyButton(tabId, report.covering);
+        : report.kind === 'complete'
+          ? tabs.complete()
+          : tabs.applyButton(tabId, report.covering);
   if (message) post(message);
 }
 

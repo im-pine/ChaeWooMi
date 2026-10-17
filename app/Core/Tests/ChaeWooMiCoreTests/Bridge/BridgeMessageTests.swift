@@ -28,6 +28,13 @@ struct BridgeMessageTests {
         #expect(try decoder.decode(ExtensionToApp.self, from: example("page-left.json")) == .pageLeft)
         let apply = try decoder.decode(ExtensionToApp.self, from: example("apply-button.json"))
         #expect(apply == .applyButton(covering: true))
+        let complete = try decoder.decode(ExtensionToApp.self, from: example("apply-complete.json"))
+        #expect(complete == .applyComplete(JobPage(
+            site: "wanted",
+            url: "https://www.wanted.co.kr/wd/300001",
+            companies: ["가상전자(주)"],
+            title: "[가상전자(주)] 프론트엔드 개발자"
+        )))
     }
 
     @Test("앱이 보내는 응답은 예시와 같은 JSON이다")

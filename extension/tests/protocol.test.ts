@@ -6,6 +6,7 @@ import jobPage from '../../protocol/examples/job-page.json';
 import ack from '../../protocol/examples/ack.json';
 import pageLeft from '../../protocol/examples/page-left.json';
 import applyButton from '../../protocol/examples/apply-button.json';
+import applyComplete from '../../protocol/examples/apply-complete.json';
 
 describe('확장 ↔ 앱 메시지 규약 (공용 예시)', () => {
   it('확장 → 앱 예시는 모두 규약에 맞다', () => {
@@ -13,6 +14,7 @@ describe('확장 ↔ 앱 메시지 규약 (공용 예시)', () => {
     expect(isExtensionToApp(jobPage)).toBe(true);
     expect(isExtensionToApp(pageLeft)).toBe(true);
     expect(isExtensionToApp(applyButton)).toBe(true);
+    expect(isExtensionToApp(applyComplete)).toBe(true);
   });
 
   it('공고 예시는 이미 걸러진 모양이다 (거르기 전후가 같다)', () => {
