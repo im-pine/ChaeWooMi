@@ -21,6 +21,8 @@ struct CompanyHeader: View {
             Spacer(minLength: 0)
             Button { expanded.toggle() } label: {
                 Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(expanded ? "상세 접기" : "상세보기")

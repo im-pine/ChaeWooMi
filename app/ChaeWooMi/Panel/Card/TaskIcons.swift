@@ -11,15 +11,17 @@ struct TaskIcons: View {
             ForEach(TaskKind.allCases, id: \.self) { kind in
                 let current = state(kind)
                 Button { onAction(kind, TaskAction.onClick(current)) } label: {
+                    // 칸 전체(위아래 여백 포함)를 누르는 영역으로. plain 스타일은 그림만 눌린다
                     TaskIcon(kind: kind, state: current)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
                 .help("\(kind.label) · \(current.label)")
                 .accessibilityLabel("\(kind.label), \(current.label)")
             }
         }
-        .padding(.vertical, 6)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.08)))
     }
 }

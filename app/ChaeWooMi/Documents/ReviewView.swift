@@ -167,6 +167,8 @@ private struct ReviewFooter: View {
             Text(title)
                 .frame(width: Self.buttonSize.width, height: Self.buttonSize.height)
                 .multilineTextAlignment(.center)
+                // plain 스타일은 글자만 눌리므로 184×40 전체를 누르는 영역으로
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(prominent ? Color.white : Color.primary)
