@@ -9,8 +9,17 @@ public enum SessionRole: String, CaseIterable, Codable, CodingKeyRepresentable, 
     /// 자기소개서
     case application
 
-    /// 사용자가 세션을 열 때 붙이는 기본 이름 (`claude --name <이름>`)
+    /// 사용자가 세션을 열 때 붙이는 기본 이름 (`claude --name <이름>`). 볼트 이름 + `/` + 역할 (사용자 결정 2026-10-17)
     public var defaultSessionName: String {
+        switch self {
+        case .jobAnalysis: "Brain_of_Pine/JobAnalysis"
+        case .resume: "Brain_of_Pine/Resume"
+        case .application: "Brain_of_Pine/Application"
+        }
+    }
+
+    /// 2026-10-17 이전 기본 이름. 저장된 설정이 이 값 그대로면 새 기본값으로 옮긴다
+    public var legacyDefaultSessionName: String {
         switch self {
         case .jobAnalysis: "job-analysis"
         case .resume: "resume"
@@ -47,6 +56,15 @@ public struct SessionRoster: Equatable, Codable, Sendable {
 
     public mutating func set(_ name: String, for role: SessionRole) {
         names[role] = name
+    }
+
+    /// 옛 기본 이름을 그대로 쓰던 역할만 새 기본 이름으로 바꾼다. 사용자가 직접 바꾼 이름은 그대로 둔다
+    public func migratingLegacyDefaults() -> SessionRoster {
+        var migrated = self
+        for role in SessionRole.allCases where names[role] == role.legacyDefaultSessionName {
+            migrated.names[role] = role.defaultSessionName
+        }
+        return migrated
     }
 
     public enum Problem: Equatable, Sendable {

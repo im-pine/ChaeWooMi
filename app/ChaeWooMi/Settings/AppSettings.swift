@@ -17,7 +17,7 @@ final class AppSettings {
         didSet { defaults.set(vaultPath, forKey: Key.vaultPath) }
     }
 
-    /// 역할별 세션 이름. 처음에는 기본 이름(job-analysis · resume · application)
+    /// 역할별 세션 이름. 처음에는 기본 이름(Brain_of_Pine/JobAnalysis · Resume · Application)
     var sessionRoster: SessionRoster {
         didSet { defaults.set(try? JSONEncoder().encode(sessionRoster), forKey: Key.sessionRoster) }
     }
@@ -26,6 +26,7 @@ final class AppSettings {
         self.defaults = defaults
         vaultPath = defaults.string(forKey: Key.vaultPath)
         sessionRoster = defaults.data(forKey: Key.sessionRoster)
-            .flatMap { try? JSONDecoder().decode(SessionRoster.self, from: $0) } ?? .defaults
+            .flatMap { try? JSONDecoder().decode(SessionRoster.self, from: $0) }?
+            .migratingLegacyDefaults() ?? .defaults
     }
 }

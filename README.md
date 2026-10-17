@@ -98,18 +98,18 @@
 
 ### 2. 역할 세션 3종 열기
 
-터미널에서 역할마다 Claude Code 세션을 이름을 붙여 엽니다. 각 세션의 작업 폴더 · 지침은 자유롭게 정합니다.
+터미널에서 역할마다 Claude Code 세션을 이름을 붙여 엽니다. 각 세션의 작업 폴더 · 지침은 자유롭게 정합니다. 기본 이름은 `<볼트 이름>/<역할>` 형식이고, **메뉴바 → 설정… → Claude Code 세션**에서 역할마다 원하는 이름으로 바꿀 수 있습니다 (이름이 정확히 같아야 연결됩니다).
 
-| 세션 이름 | 역할 | 채우미가 보내는 요청 |
+| 기본 세션 이름 | 역할 | 채우미가 보내는 요청 |
 | --- | --- | --- |
-| `job-analysis` | 공고 분석 · 지원 기록 | 공고 분석, 지원 현황 기록 |
-| `resume` | 이력서 | 초안 작성, 수정 명령, 승인 후 PDF 생성 |
-| `application` | 자기소개서 | 문항 · 글자수 기반 초안, 수정 명령, 승인 후 PDF 생성 |
+| `Brain_of_Pine/JobAnalysis` | 공고 분석 · 지원 기록 | 공고 분석, 지원 현황 기록 |
+| `Brain_of_Pine/Resume` | 이력서 | 초안 작성, 수정 명령, 승인 후 PDF 생성 |
+| `Brain_of_Pine/Application` | 자기소개서 | 문항 · 글자수 기반 초안, 수정 명령, 승인 후 PDF 생성 |
 
 ```bash
-claude --name job-analysis   # 이미 연 세션이면 /rename job-analysis
-claude --name resume
-claude --name application
+claude --name Brain_of_Pine/JobAnalysis   # 이미 연 세션이면 /rename Brain_of_Pine/JobAnalysis
+claude --name Brain_of_Pine/Resume
+claude --name Brain_of_Pine/Application
 ```
 
 ### 3. 세션 간 메시지로 연결
