@@ -106,4 +106,26 @@ struct CardModelTests {
         })
         guard case .company(_, .unavailable) = card.content else { Issue.record("\(card.content)"); return }
     }
+
+    @Test("12.0이 바뀌면 마지막 조회를 다시 해 결과를 갱신한다 (볼트 파일 감시)")
+    func recheckAfterVaultChange() {
+        var card = CardModel()
+        var rows: [ApplicationRecord] = []
+        let changing: ([String]) -> CompanyLookup = {
+            CompanyLookup.resolve(candidates: $0, status: .success(rows), today: today)
+        }
+        card.handle(.page(page(["가상전자(주)"])), lookup: changing)
+        #expect(card.content == .company(name: "가상전자(주)", lookup: .clear(company: "가상전자(주)", info: nil)))
+        rows = records
+        card.handle(.recheck, lookup: changing)
+        guard case .company(_, .caution) = card.content else { Issue.record("\(card.content)"); return }
+    }
+
+    @Test("표시 중인 카드가 없으면 다시 조회하지 않는다")
+    func recheckWhenHidden() {
+        var card = CardModel()
+        var calls = 0
+        card.handle(.recheck, lookup: { calls += 1; return lookup($0) })
+        #expect(calls == 0)
+    }
 }

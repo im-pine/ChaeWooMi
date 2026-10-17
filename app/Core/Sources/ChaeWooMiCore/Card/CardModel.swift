@@ -23,6 +23,8 @@ public struct CardModel: Equatable, Sendable {
         case chosen(String)
         /// 카드 닫기
         case dismissed
+        /// 12.0이 바뀜 → 마지막 조회를 다시 한다 (볼트 파일 감시)
+        case recheck
     }
 
     public private(set) var content: Content = .hidden
@@ -30,6 +32,8 @@ public struct CardModel: Equatable, Sendable {
     public private(set) var page: JobPage?
     /// 수동 카드를 사용자가 직접 띄웠는가 (공고 이동으로 사라지지 않음)
     public private(set) var manualPinned = false
+    /// 마지막으로 조회한 회사명 (다시 조회용)
+    public private(set) var lastQuery: [String]?
 
     public init() {}
 
@@ -39,20 +43,37 @@ public struct CardModel: Equatable, Sendable {
         case let .page(page):
             self.page = page
             manualPinned = false
+            lastQuery = page.companies
             content = Self.content(for: lookup(page.companies))
         case .pageLeft:
             page = nil
-            if !manualPinned { content = .hidden }
+            if !manualPinned {
+                content = .hidden
+                lastQuery = nil
+            }
         case .manualActivated:
             manualPinned = true
             content = .manual(lookup: nil)
         case let .nameEntered(name):
+            if CompanyName(name).isUsable { lastQuery = [name] }
             content = Self.enteredContent(name, lookup: lookup, manual: manualPinned || page == nil)
         case let .chosen(name):
+            lastQuery = [name]
             content = Self.content(for: lookup([name]))
+        case .recheck:
+            recheck(lookup: lookup)
         case .dismissed:
             manualPinned = false
             content = page == nil ? .hidden : .manual(lookup: nil)
+        }
+    }
+
+    private mutating func recheck(lookup: ([String]) -> CompanyLookup) {
+        guard let lastQuery, content != .hidden else { return }
+        if case .manual = content {
+            content = .manual(lookup: lookup(lastQuery))
+        } else {
+            content = Self.content(for: lookup(lastQuery))
         }
     }
 

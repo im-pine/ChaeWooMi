@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 플로팅 런처 (약 44px 원형). 카드 · 상세는 1단계에서 붙인다.
+/// 플로팅 런처 (약 44px 원형). 공고가 없거나 카드를 접었을 때 보인다.
 struct LauncherView: View {
     var body: some View {
         Image(systemName: "leaf.fill")

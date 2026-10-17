@@ -1,0 +1,94 @@
+import AppKit
+import ChaeWooMiCore
+import SwiftUI
+
+/// 자동 카드 (APP-007): 회사명 · 재지원 판별 · 아이콘 3종 · 상세보기. 안내 문구 없이 짧게
+struct CompanyCard: View {
+    @Bindable var store: CardStore
+    let company: String
+    let lookup: CompanyLookup
+    let source: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            CompanyHeader(company: company.isEmpty ? "회사 확인 필요" : company, source: source, expanded: $store.expanded)
+            ReapplyBadge(lookup: lookup) { store.reloadVault(); store.handle(.recheck) }
+            TaskIcons(state: store.taskState) { kind, action in handle(kind, action) }
+            if let notice = store.notice {
+                Text(notice).font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            if store.expanded, !company.isEmpty {
+                DetailSection(store: store, company: company)
+            }
+        }
+        .frame(width: CardTheme.cardWidth - 20, alignment: .leading)
+        .cardBackground()
+    }
+
+    /// 아이콘 클릭 분기 (APP-017). 세션 요청 · 모달은 2단계에서 붙인다 (AI 결정: 1단계는 안내만)
+    private func handle(_ kind: TaskKind, _ action: TaskAction) {
+        switch action {
+        case .start, .openReview, .showProgress:
+            store.notice = "\(kind.label) 요청은 다음 단계에서 연결됩니다"
+        case .showResult:
+            store.expanded = true
+        case let .showFailure(reason), let .explain(reason):
+            store.notice = reason
+        }
+    }
+}
+
+/// 상세 (APP-014): 12.0 지원 기록, 문서 상태, 회사 폴더 · 산출물 열기. 작업 상태와 무관하게 항상 진입
+struct DetailSection: View {
+    let store: CardStore
+    let company: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Divider()
+            records
+            Text("문서").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+            ForEach(TaskKind.allCases, id: \.self) { kind in
+                row(kind.label, store.taskState(kind).label)
+            }
+            folderLinks
+        }
+        .font(.system(size: 11))
+    }
+
+    @ViewBuilder private var records: some View {
+        let rows = store.records(for: company)
+        Text("지원 기록").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+        if let latest = rows.first {
+            row("최근 지원", ReapplyInfo.display(latest.lastSubmitted))
+            if !latest.role.isEmpty { row("직무", latest.role) }
+            if !latest.note.isEmpty { row("비고", latest.note) }
+        } else {
+            row("최근 지원", "기록 없음")
+        }
+    }
+
+    @ViewBuilder private var folderLinks: some View {
+        if let folders = store.folders(for: company) {
+            ForEach(folders.documents + folders.outputFolders, id: \.self) { url in
+                Button { NSWorkspace.shared.open(url) } label: {
+                    Label(url.lastPathComponent, systemImage: url.hasDirectoryPath ? "folder" : "doc")
+                }
+                .buttonStyle(.link)
+            }
+            ForEach(folders.companyFolders, id: \.self) { url in
+                Button { NSWorkspace.shared.open(url) } label: { Label("회사 폴더", systemImage: "folder") }
+                    .buttonStyle(.link)
+                    .help(url.path)
+            }
+        }
+    }
+
+    private func row(_ title: String, _ value: String) -> some View {
+        HStack {
+            Text(title).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).lineLimit(1)
+        }
+    }
+}
