@@ -161,6 +161,8 @@ struct SessionReplyTests {
         let failed = try #require(SessionReply.parse("[공고 분석 id=q9] 결과=실패\n사유: 원문 없음"))
         #expect(failed.outcome == .failed)
         #expect(failed.reason == "원문 없음")
+        // 다른 낱말 안의 `id=`는 요청 id가 아니다
+        #expect(SessionReply.parse("세션 uuid=zz 확인. [공고 분석 id=q7] 마침")?.id == "q7")
     }
 
     @Test("채우미 요청 글을 그대로 돌려받은 것은 회신이 아니다")
