@@ -55,7 +55,7 @@ public struct LookupFailure: Equatable, Sendable {
             fix = "파일이 잠겨 있거나 권한이 없는지 확인한 뒤 다시 시도하세요"
         case .noStatusTable:
             reason = "12.0에 지원 기록 표가 없습니다"
-            fix = "`회사` · `최근 제출일` 열이 있는 표인지 확인하세요"
+            fix = "`회사` · `제출일`(또는 `최근 제출일`) 열이 있는 표인지 확인하세요"
         }
     }
 

@@ -78,7 +78,33 @@ struct ApplicationStatusParserTests {
         #expect(result.skippedRows == 3)
     }
 
-    @Test("회사 · 최근 제출일 열이 있는 표가 없으면 오류")
+    @Test("실제 12.0 형식: `제출일` 열, 마감만 있는 지원 전 표는 건너뜀, 비고의 `\\|` 위키 링크 (실측 버그)")
+    func submittedColumnName() throws {
+        let markdown = """
+        ## 지원 전 (분석 중)
+
+        | 회사 | 직무 | 마감 | 상태 | 비고 |
+        |---|---|---|---|---|
+        | 가상물산 | 웹 | 2026-11-30 | 분석 중 |  |
+
+        ## 지원 현황 (제출일 최신순, 2곳)
+
+        | 회사 | 직무 | 제출일 | 재지원 가능 | 상태 | 비고 |
+        |---|---|---|---|---|---|
+        | 가상전자(주) | 웹개발자 | 2026-10-16 | 2027-10-17 이후 | 지원 완료 | 사람인 22:28 · [[12.1 Active/가상전자/공고\\|분석]] |
+        | 주식회사 가상랩 | 프론트엔드 | 2026-10-15 | 2027-10-16 이후 | 이력서 열람(10-08) |  |
+        """
+        let result = try ApplicationStatusParser.parse(markdown)
+        #expect(result.records.map(\.company) == ["가상전자(주)", "주식회사 가상랩"])
+        #expect(result.skippedRows == 0)
+        let first = try #require(result.records.first)
+        #expect(first.lastSubmitted == CalendarDay(year: 2026, month: 10, day: 16))
+        #expect(first.reapplyFrom == CalendarDay(year: 2027, month: 10, day: 17))
+        #expect(first.status == "지원 완료")
+        #expect(first.note.hasSuffix("분석]]") || first.note.hasSuffix("분석"))
+    }
+
+    @Test("회사 · 제출일 열이 있는 표가 없으면 오류")
     func noStatusTable() {
         #expect(throws: ApplicationStatusParser.ParseError.noStatusTable) {
             try ApplicationStatusParser.parse("| 이름 | 날짜 |\n|---|---|\n| 가 | 2026-01-01 |")
