@@ -6,7 +6,11 @@ struct FloatingRoot: View {
     let store: CardStore
 
     var body: some View {
-        Group {
+        VStack(alignment: .trailing, spacing: 8) {
+            // 지원 완료 화면은 공고 페이지가 아니어도 뜬다 (HIS-017)
+            if let records = store.records, records.presenting {
+                ApplyCompleteCard(records: records)
+            }
             if store.showsLauncherOnly {
                 Button { store.collapsed = false } label: { LauncherView() }
                     .buttonStyle(.plain)

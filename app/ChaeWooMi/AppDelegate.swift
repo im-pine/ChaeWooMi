@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) lazy var cards = CardStore(settings: settings)
     private(set) lazy var launcher = FloatingController(store: cards)
     private(set) lazy var documents = DocumentController(settings: settings, sessions: sessions, cards: cards)
+    private(set) lazy var records = RecordController(settings: settings, sessions: sessions, cards: cards)
     private(set) lazy var settingsWindow = SettingsWindowController { [unowned self] in
         SettingsView(settings: settings, bridge: bridge, sessions: sessions)
     }
@@ -17,7 +18,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         cards.start()
         cards.documents = documents
-        sessions.onReply = { [unowned self] reply in documents.received(reply) }
+        cards.records = records
+        // 회신은 id로 제 요청만 받는다
+        sessions.onReply = { [unowned self] reply in
+            documents.received(reply)
+            records.received(reply)
+        }
         settings.onVaultPathChange = { [unowned self] in
             cards.reloadVault()
             cards.handle(.recheck)
@@ -56,13 +62,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// 확장이 보낸 공고 · 이동 · 지원 버튼 알림을 카드로 넘긴다
+    /// 확장이 보낸 공고 · 이동 · 지원 버튼 · 지원 완료 알림을 카드로 넘긴다
     private func route(_ message: ExtensionToApp) {
         switch message {
         case let .jobPage(page): cards.handle(.page(page))
         case .pageLeft: cards.handle(.pageLeft)
         case let .applyButton(covering): cards.applyButton(covering: covering)
-        case .hello, .applyComplete: break  // 지원 완료 감지는 3단계 앱 PR에서 카드로 연결
+        case let .applyComplete(page): records.detected(page)
+        case .hello: break
         }
     }
 

@@ -22,6 +22,8 @@ final class CardStore {
     @ObservationIgnored private let settings: AppSettings
     /// 문서 · 분석 진행 (아이콘의 진행 중 · 실패 · 다른 문서 작업 중을 덮어쓴다)
     @ObservationIgnored weak var documents: DocumentController?
+    /// 지원 기록 (12.0이 바뀌면 반영을 확인한다)
+    @ObservationIgnored weak var records: RecordController?
     @ObservationIgnored private lazy var watcher = VaultWatcher { [weak self] in self?.vaultChanged() }
     @ObservationIgnored private var watchedPath: String?
 
@@ -137,5 +139,6 @@ final class CardStore {
         reloadVault()
         handle(.recheck)
         documents?.filesChanged()
+        records?.filesChanged()
     }
 }
