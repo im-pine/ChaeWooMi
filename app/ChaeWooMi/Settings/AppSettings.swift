@@ -11,6 +11,11 @@ final class AppSettings {
         static let sessionRoster = "sessionRoster"
     }
 
+    /// 공고 페이지에서 자동 실행 (메뉴바 스위치, APP-005). 호스트가 같은 키를 읽는다
+    var autoLaunchFromBrowser: Bool {
+        didSet { defaults.set(autoLaunchFromBrowser, forKey: AutoLaunchPolicy.key) }
+    }
+
     private let defaults: UserDefaults
 
     var vaultPath: String? {
@@ -31,6 +36,7 @@ final class AppSettings {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         vaultPath = defaults.string(forKey: Key.vaultPath)
+        autoLaunchFromBrowser = AutoLaunchPolicy.isEnabled(defaults)
         sessionRoster = defaults.data(forKey: Key.sessionRoster)
             .flatMap { try? JSONDecoder().decode(SessionRoster.self, from: $0) }?
             .migratingLegacyDefaults() ?? .defaults

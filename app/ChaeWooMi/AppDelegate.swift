@@ -26,6 +26,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if settings.vaultPath == nil { settingsWindow.show() }
     }
 
+    /// Dock 아이콘 우클릭 메뉴 (APP-018): 지정 외 사이트에서 수동 카드를 띄운다
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        menu.addItem(withTitle: "플로팅 활성화", action: #selector(activateFloating), keyEquivalent: "").target = self
+        return menu
+    }
+
+    @objc private func activateFloating() {
+        cards.handle(.manualActivated)
+        launcher.show()
+    }
+
     /// Dock 아이콘을 클릭하면(이미 실행 중) 설정 창을 연다
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         settingsWindow.show()
