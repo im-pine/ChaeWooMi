@@ -39,7 +39,8 @@ public struct SessionReply: Equatable, Sendable {
 
     /// 글 안 처음 나오는 `id=<요청 id>`
     private static func looseID(in text: String) -> String? {
-        let pattern = #"id=[A-Za-z0-9][A-Za-z0-9_-]*"#
+        // 앞이 글자가 아닐 때만 (`uuid=…` 안의 `id=`를 잡지 않음)
+        let pattern = #"(?<![A-Za-z0-9_])id=[A-Za-z0-9][A-Za-z0-9_-]*"#
         guard let range = text.range(of: pattern, options: .regularExpression) else { return nil }
         return String(text[range].dropFirst(3))
     }
