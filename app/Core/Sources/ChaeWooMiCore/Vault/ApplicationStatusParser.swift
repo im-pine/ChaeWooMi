@@ -3,7 +3,7 @@ import Markdown
 
 /// 12.0 지원 현황 Markdown에서 지원 기록 표를 읽는다.
 ///
-/// 머리줄에 `회사` · `최근 제출일` 열이 있는 표만 지원 기록으로 본다 (진행 중 · 종료 표가 나뉘어 있어도 모두 읽음).
+/// 머리줄에 `회사` · `최근 제출일`(또는 `제출일`) 열이 있는 표만 지원 기록으로 본다 (진행 중 · 종료 표가 나뉘어 있어도 모두 읽음).
 /// 열 순서는 머리줄 이름으로 찾으므로 바뀌어도 된다.
 public enum ApplicationStatusParser {
     public struct Result: Equatable, Sendable {
@@ -13,7 +13,7 @@ public enum ApplicationStatusParser {
     }
 
     public enum ParseError: Error, Equatable {
-        /// `회사` · `최근 제출일` 열이 있는 표가 없음
+        /// `회사` · `최근 제출일`(또는 `제출일`) 열이 있는 표가 없음
         case noStatusTable
     }
 
@@ -41,6 +41,8 @@ public enum ApplicationStatusParser {
 private struct TableReader {
     let rows: [[String]]
     private let columns: [String: Int]
+    /// 제출일 열 이름. 실제 12.0은 `제출일`, 기능명세는 `최근 제출일`
+    private let submittedColumn: String
 
     init?(_ table: Markdown.Table) {
         let header = table.head.cells.map { CellText.plain($0) }
@@ -48,14 +50,16 @@ private struct TableReader {
         for (index, name) in header.enumerated() where columns[name] == nil {
             columns[name] = index
         }
-        guard columns["회사"] != nil, columns["최근 제출일"] != nil else { return nil }
+        guard columns["회사"] != nil,
+              let submittedColumn = ["최근 제출일", "제출일"].first(where: { columns[$0] != nil }) else { return nil }
         self.columns = columns
+        self.submittedColumn = submittedColumn
         self.rows = table.body.rows.map { row in row.cells.map { CellText.plain($0) } }
     }
 
     func record(from row: [String]) -> ApplicationRecord? {
         let company = CellText.withoutWikiLink(value(row, "회사"))
-        guard !company.isEmpty, let submitted = CalendarDay(leadingIn: value(row, "최근 제출일")) else {
+        guard !company.isEmpty, let submitted = CalendarDay(leadingIn: value(row, submittedColumn)) else {
             return nil
         }
         return ApplicationRecord(

@@ -28,7 +28,7 @@ struct VaultCheck: Equatable, Sendable {
         case .vaultNotAFolder: "폴더가 없습니다. 볼트 경로를 다시 지정하세요"
         case .statusFileNotFound: "볼트에서 `12.0 지원 현황.md`를 찾지 못했습니다"
         case .unreadable: "12.0 파일을 읽을 수 없습니다. 파일 권한을 확인하세요"
-        case .noStatusTable: "12.0에 회사 · 최근 제출일 열이 있는 표가 없습니다"
+        case .noStatusTable: "12.0에 회사 · 제출일 열이 있는 표가 없습니다"
         }
     }
 }
