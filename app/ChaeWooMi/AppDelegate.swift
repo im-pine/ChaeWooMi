@@ -24,6 +24,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         bridge.start()
         // 볼트 경로가 없으면(첫 실행) 설정부터 연다
         if settings.vaultPath == nil { settingsWindow.show() }
+        #if DEBUG
+        SettingsTypingSelfTest.runIfRequested(
+            open: { [unowned self] in
+                settingsWindow.show()
+                return settingsWindow.window
+            },
+            readName: { [unowned self] in settings.sessionRoster.name(for: .jobAnalysis) }
+        )
+        #endif
     }
 
     /// Dock 아이콘 우클릭 메뉴 (APP-018): 지정 외 사이트에서 수동 카드를 띄운다
