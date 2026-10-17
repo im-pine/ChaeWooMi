@@ -91,6 +91,13 @@ struct SessionRequestTests {
         ).text(id: "q5")
         #expect(text.hasSuffix("제출일: 2026-10-07"))
     }
+    @Test("분석 재요청에는 사용자 보완 글을 항목으로 붙인다 (비신뢰 블록 밖, ANL-003)")
+    func analysisSupplement() {
+        let text = SessionRequest.analysis(
+            company: "가상전자", platform: "원티드", url: "u", postingText: "원문", supplement: "자격요건:\nTS 2년"
+        ).text(id: "q9")
+        #expect(text.contains("사용자 보완: 자격요건: TS 2년\n<<<비신뢰 자료: 공고 원문>>>"))
+    }
 }
 
 @Suite("세션 회신 해석 (00.0.7)")
