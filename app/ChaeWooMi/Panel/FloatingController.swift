@@ -14,6 +14,7 @@ final class FloatingController {
     @ObservationIgnored private let store: CardStore
     @ObservationIgnored private var panel: FloatingPanel?
     @ObservationIgnored private var screenObserver: NSObjectProtocol?
+    @ObservationIgnored private var resizeObserver: NSObjectProtocol?
 
     init(store: CardStore) {
         self.store = store
@@ -56,6 +57,13 @@ final class FloatingController {
         let host = ResizingHostingView(rootView: FloatingRoot(store: store))
         host.onResize = { [weak self] in _ = self?.place() }
         panel.contentView = host
+        // SwiftUI가 내용에 맞춰 창 크기를 직접 바꾸면(왼쪽 위 고정) 오른쪽 아래로 다시 놓는다.
+        // 런처 → 카드로 커질 때 화면 밖으로 잘리던 문제 (실측: 44×44 자리에서 220×114로 오른쪽 · 아래로 커짐)
+        resizeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResizeNotification, object: panel, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { _ = self?.place() }
+        }
         return panel
     }
 
