@@ -11,6 +11,7 @@ struct SettingsView: View {
             VaultSection(settings: settings)
             SessionSection(settings: settings, sessions: sessions)
             BrowserSection(bridge: bridge)
+            CheckSection(settings: settings, sessions: sessions, bridge: bridge)
         }
         .formStyle(.grouped)
         .frame(width: 460)
