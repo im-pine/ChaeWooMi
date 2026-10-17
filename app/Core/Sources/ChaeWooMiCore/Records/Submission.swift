@@ -30,6 +30,15 @@ public struct Submission: Equatable, Sendable {
         }
     }
 
+    /// 공고 제목에서 직무 기본값: `[가상전자(주)] 프론트엔드 개발자 채용` → `프론트엔드 개발자 채용` (앞 대괄호만 뗀다)
+    public static func role(fromTitle title: String?) -> String {
+        var text = (title ?? "").trimmingCharacters(in: .whitespaces)
+        if text.hasPrefix("["), let end = text.firstIndex(of: "]") {
+            text = String(text[text.index(after: end)...]).trimmingCharacters(in: .whitespaces)
+        }
+        return text
+    }
+
     /// 폼 값이 맞으면 JOB-ANALYSIS 기록 요청, 아니면 첫 문제
     public func request(today: CalendarDay) -> Result<SessionRequest, Problem> {
         let company = company.trimmingCharacters(in: .whitespacesAndNewlines)
