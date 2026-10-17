@@ -9,6 +9,8 @@ final class BrowserBridge {
     private(set) var registration: NativeHostManifest.Registration = .missing
     private(set) var connections = ExtensionConnections()
     private(set) var serverError: String?
+    /// 지원 사이트 설정 (WEB-014). 파일이 틀렸으면 기본값으로 동작하고 problems에 이유를 담는다
+    private(set) var siteConfig = SiteConfigStore.Loaded(config: .defaultConfig, problems: [])
 
     private var server: BridgeServer?
     private var nextConnectionID = 0
@@ -28,6 +30,7 @@ final class BrowserBridge {
     }
 
     func start() {
+        siteConfig = SiteConfigStore.load(from: SiteConfigStore.defaultURL())
         installHostManifest()
         startServer()
     }
@@ -83,6 +86,7 @@ final class BrowserBridge {
         case let .hello(version):
             connections.hello(id, version: version)
             try? connection.send(AppToExtension.ack(appVersion: Self.appVersion))
+            try? connection.send(AppToExtension.siteConfig(siteConfig.config))
         case .jobPage:
             // 공고 처리는 1단계(재지원 주의)에서 붙인다
             break

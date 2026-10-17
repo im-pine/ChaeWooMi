@@ -17,7 +17,8 @@ let package = Package(
     targets: [
         .target(
             name: "ChaeWooMiCore",
-            dependencies: [.product(name: "Markdown", package: "swift-markdown")]
+            dependencies: [.product(name: "Markdown", package: "swift-markdown")],
+            resources: [.copy("Sites/Resources/sites.default.json")]
         ),
         .testTarget(name: "ChaeWooMiCoreTests", dependencies: ["ChaeWooMiCore"])
     ]

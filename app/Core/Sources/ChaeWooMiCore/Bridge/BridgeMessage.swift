@@ -9,6 +9,8 @@ public enum ExtensionToApp: Equatable, Sendable {
 /// 앱 → 확장 메시지
 public enum AppToExtension: Equatable, Sendable {
     case ack(appVersion: String)
+    /// 지원 사이트 설정 (앱 소유 파일). 확장은 이 설정으로 공고 페이지를 알아본다
+    case siteConfig(SiteConfig)
 }
 
 extension ExtensionToApp: Codable {
@@ -49,16 +51,19 @@ extension ExtensionToApp: Codable {
 
 extension AppToExtension: Codable {
     private enum CodingKeys: String, CodingKey {
-        case type, appVersion
+        case type, appVersion, config
     }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let type = try container.decode(String.self, forKey: .type)
-        guard type == "ack" else {
-            throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "모르는 type: \(type)")
+        switch try container.decode(String.self, forKey: .type) {
+        case "ack":
+            self = .ack(appVersion: try container.decode(String.self, forKey: .appVersion))
+        case "siteConfig":
+            self = .siteConfig(try container.decode(SiteConfig.self, forKey: .config))
+        case let other:
+            throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "모르는 type: \(other)")
         }
-        self = .ack(appVersion: try container.decode(String.self, forKey: .appVersion))
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -67,6 +72,9 @@ extension AppToExtension: Codable {
         case let .ack(version):
             try container.encode("ack", forKey: .type)
             try container.encode(version, forKey: .appVersion)
+        case let .siteConfig(config):
+            try container.encode("siteConfig", forKey: .type)
+            try container.encode(config, forKey: .config)
         }
     }
 }

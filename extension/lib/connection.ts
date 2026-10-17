@@ -1,4 +1,5 @@
 import { isAppToExtension, type ExtensionToApp } from './protocol';
+import type { SiteConfig } from './siteConfig';
 import { NATIVE_HOST, stateFromDisconnect, type ConnectionState } from './native';
 
 /** Native Messaging 포트에서 쓰는 부분만 (테스트에서 가짜 포트로 바꾼다) */
@@ -14,6 +15,8 @@ export type ConnectionDeps = {
   lastErrorMessage(): string | undefined;
   extensionVersion: string;
   onState(state: ConnectionState): void;
+  /** 앱이 보낸 지원 사이트 설정 */
+  onConfig(config: SiteConfig): void;
 };
 
 /**
@@ -30,7 +33,9 @@ export function createConnection(deps: ConnectionDeps) {
     current = port;
     port.onMessage.addListener((message) => {
       if (port !== current || !isAppToExtension(message)) return;
-      deps.onState({ kind: 'connected', appVersion: message.appVersion });
+      if (message.type === 'ack')
+        deps.onState({ kind: 'connected', appVersion: message.appVersion });
+      else deps.onConfig(message.config);
     });
     port.onDisconnect.addListener(() => {
       if (port !== current) return;
