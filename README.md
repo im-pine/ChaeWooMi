@@ -170,9 +170,9 @@ open ChaeWooMi.xcodeproj
 ```bash
 cd app && xcodegen generate
 xcodebuild -project ChaeWooMi.xcodeproj -scheme ChaeWooMi -configuration Release \
-  -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
-codesign --force --deep --sign - build/Build/Products/Release/ChaeWooMi.app
-ditto build/Build/Products/Release/ChaeWooMi.app /Applications/ChaeWooMi.app
+  -destination 'platform=macOS' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO build
+codesign --force --deep --sign - DerivedData/Build/Products/Release/ChaeWooMi.app
+ditto DerivedData/Build/Products/Release/ChaeWooMi.app /Applications/ChaeWooMi.app
 open /Applications/ChaeWooMi.app   # 첫 실행 때 Native Messaging 호스트 등록 파일을 씁니다
 ```
 
