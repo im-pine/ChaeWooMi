@@ -149,4 +149,13 @@ struct CardModelTests {
         card.handle(.recheck, lookup: lookup)
         #expect(card.content == .manual(lookup: nil))
     }
+
+    @Test("Dock 수동 카드를 띄운 채 지정 사이트 공고에 들어가면 그 공고의 자동 카드로 바뀐다 (AI 결정)")
+    func postingReplacesPinnedManual() {
+        var card = CardModel()
+        card.handle(.manualActivated, lookup: lookup)
+        card.handle(.page(page(["가상전자"])), lookup: lookup)
+        guard case .company = card.content else { Issue.record("\(card.content)"); return }
+        #expect(!card.manualPinned)
+    }
 }

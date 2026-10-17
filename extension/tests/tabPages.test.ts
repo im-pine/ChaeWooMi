@@ -51,3 +51,14 @@ describe('보고 있는 탭의 공고만 앱에 보낸다 (WEB-015)', () => {
     expect(tabs.applyButton(2, true)).toBeNull();
   });
 });
+
+describe('등록 도메인 밖으로 이동', () => {
+  it('보고 있는 공고 탭이 새 페이지를 불러오기 시작하면 pageLeft, 공고가 없던 탭은 아무것도 보내지 않는다', () => {
+    const tabs = new TabPages();
+    tabs.activate(1);
+    tabs.posting(1, page('가상전자'));
+    expect(tabs.navigating(1)).toEqual({ type: 'pageLeft' });
+    expect(tabs.navigating(1)).toBeNull();
+    expect(tabs.current()).toEqual({ type: 'pageLeft' });
+  });
+});

@@ -133,4 +133,15 @@ struct TaskStateTests {
         #expect(states.filter { TaskAction.onClick($0).startsWork }.isEmpty)
         #expect(TaskAction.onClick(.ready).startsWork)
     }
+
+    @Test("다음 해에 다시 지원하면 지난 연도 산출물로 아이콘을 정하지 않는다")
+    func latestYearOnly() throws {
+        let fixture = try CardVault()
+        // 테스트 끝까지 임시 볼트를 지우지 않도록 붙잡아 둔다
+        defer { withExtendedLifetime(fixture) {} }
+        try fixture.write("11 Job/11.0.0 Output/가상전자 2025/테스터_이력서_가상전자.pdf", modified: Date())
+        let folders = CompanyFolders.find(company: "가상전자", in: fixture.layout)
+        #expect(folders.currentOutputFolders.map(\.lastPathComponent) == ["가상전자 2026"])
+        #expect(TaskStateRule.fileState(.resume, folders: folders) == .ready)
+    }
 }

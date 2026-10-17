@@ -75,6 +75,12 @@ export default defineBackground(() => {
     if (tab?.id !== undefined) tabs.activate(tab.id);
   });
   browser.tabs.onActivated.addListener(({ tabId }) => connection.post(tabs.activate(tabId)));
+  // 탭이 새 페이지를 불러오기 시작하면 이전 공고를 비운다. 등록 도메인 밖으로 가면 콘텐츠 스크립트가 없어 left를 못 보내기 때문
+  browser.tabs.onUpdated.addListener((tabId, info) => {
+    if (info.status !== 'loading') return;
+    const message = tabs.navigating(tabId);
+    if (message) connection.post(message);
+  });
   browser.tabs.onRemoved.addListener((tabId) => {
     const message = tabs.closed(tabId);
     if (message) connection.post(message);
