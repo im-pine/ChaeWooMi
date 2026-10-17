@@ -128,4 +128,25 @@ struct CardModelTests {
         card.handle(.recheck, lookup: { calls += 1; return lookup($0) })
         #expect(calls == 0)
     }
+
+    @Test("회사 선택을 취소한 뒤 볼트가 바뀌어도 입력하지 않은 이전 후보로 조회하지 않는다")
+    func dismissClearsQuery() {
+        var card = CardModel()
+        card.handle(.page(page(["가상"])), lookup: lookup)
+        card.handle(.dismissed, lookup: lookup)
+        #expect(card.content == .manual(lookup: nil))
+        var calls = 0
+        card.handle(.recheck, lookup: { calls += 1; return lookup($0) })
+        #expect(calls == 0)
+        #expect(card.content == .manual(lookup: nil))
+    }
+
+    @Test("Dock에서 수동 카드를 띄우면 이전 공고 후보로 다시 조회하지 않는다")
+    func manualActivationClearsQuery() {
+        var card = CardModel()
+        card.handle(.page(page(["가상전자"])), lookup: lookup)
+        card.handle(.manualActivated, lookup: lookup)
+        card.handle(.recheck, lookup: lookup)
+        #expect(card.content == .manual(lookup: nil))
+    }
 }

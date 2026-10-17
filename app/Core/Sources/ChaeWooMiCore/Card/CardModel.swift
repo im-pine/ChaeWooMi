@@ -53,6 +53,7 @@ public struct CardModel: Equatable, Sendable {
             }
         case .manualActivated:
             manualPinned = true
+            lastQuery = nil
             content = .manual(lookup: nil)
         case let .nameEntered(name):
             if CompanyName(name).isUsable { lastQuery = [name] }
@@ -63,7 +64,9 @@ public struct CardModel: Equatable, Sendable {
         case .recheck:
             recheck(lookup: lookup)
         case .dismissed:
+            // 사용자가 입력하지 않은 이전 후보로 다시 조회하지 않도록 비운다
             manualPinned = false
+            lastQuery = nil
             content = page == nil ? .hidden : .manual(lookup: nil)
         }
     }

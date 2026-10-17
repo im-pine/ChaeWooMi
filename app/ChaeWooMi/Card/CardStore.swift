@@ -117,10 +117,12 @@ final class CardStore {
         )
     }
 
+    /// 공고가 바뀌면 화면 상태를 처음으로. 지원 버튼 가림도 새 공고 탭이 다시 알려 줄 때까지 푼다
     private func resetView() {
         expanded = false
         collapsed = false
         notice = nil
+        applyButtonCovering = false
     }
 
     private func vaultChanged() {
