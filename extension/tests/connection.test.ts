@@ -94,4 +94,21 @@ describe('앱이 보낸 설정', () => {
     ports[0]?.receive({ type: 'siteConfig', config: { version: 9, sites: [] } });
     expect(configs).toEqual([DEFAULT_CONFIG]);
   });
+
+  it('끊긴 뒤 보낼 메시지가 생기면 다시 연결하고 hello 다음에 보낸다 (앱 재시작 실측 버그)', () => {
+    const { connection, ports } = setup();
+    connection.connect();
+    ports[0]?.drop();
+    const page = { type: 'pageLeft' as const };
+    connection.post(page);
+    expect(ports).toHaveLength(2);
+    expect(ports[1]?.posted).toEqual([{ type: 'hello', extensionVersion: '0.1.0' }, page]);
+  });
+
+  it('연결돼 있으면 새로 연결하지 않는다', () => {
+    const { connection, ports } = setup();
+    connection.connect();
+    connection.post({ type: 'pageLeft' });
+    expect(ports).toHaveLength(1);
+  });
 });

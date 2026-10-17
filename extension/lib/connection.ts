@@ -46,8 +46,12 @@ export function createConnection(deps: ConnectionDeps) {
     port.postMessage(hello);
   }
 
-  /** 연결돼 있으면 앱에 보낸다. 끊겨 있으면 버린다 (다시 연결할 때 지금 상태를 다시 보냄) */
+  /**
+   * 앱에 보낸다. 끊겨 있으면(앱을 껐다 켰거나 바꿔 설치함) 먼저 다시 연결한다 — 연결하면 호스트가 앱을 실행한다 (APP-019).
+   * 다시 연결하지 않으면 service worker가 다시 시작될 때까지 공고 알림이 모두 버려졌다 (실측)
+   */
   function post(message: ExtensionToApp) {
+    if (!current) connect();
     current?.postMessage(message);
   }
 
