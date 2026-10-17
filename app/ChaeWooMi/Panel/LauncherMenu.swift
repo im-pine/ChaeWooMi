@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 메뉴바: 런처 다시 표시 (런처를 띄우지 못했으면 안내 문구와 함께)
 struct LauncherMenu: View {
-    let launcher: LauncherController
+    let launcher: FloatingController
 
     var body: some View {
         if launcher.failed {

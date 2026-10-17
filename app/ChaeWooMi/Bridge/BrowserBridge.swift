@@ -11,6 +11,8 @@ final class BrowserBridge {
     private(set) var serverError: String?
     /// 지원 사이트 설정 (WEB-014). 파일이 틀렸으면 기본값으로 동작하고 problems에 이유를 담는다
     private(set) var siteConfig = SiteConfigStore.Loaded(config: .defaultConfig, problems: [])
+    /// 공고 · 이동 · 지원 버튼 알림을 받을 곳 (카드)
+    @ObservationIgnored var onPage: (@MainActor (ExtensionToApp) -> Void)?
 
     private var server: BridgeServer?
     private var nextConnectionID = 0
@@ -88,8 +90,7 @@ final class BrowserBridge {
             try? connection.send(AppToExtension.ack(appVersion: Self.appVersion))
             try? connection.send(AppToExtension.siteConfig(siteConfig.config))
         case .jobPage, .pageLeft, .applyButton:
-            // 카드 표시는 플로팅 카드 PR에서 붙인다
-            break
+            onPage?(message)
         }
     }
 

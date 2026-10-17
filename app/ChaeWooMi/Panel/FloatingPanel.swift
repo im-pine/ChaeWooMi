@@ -18,9 +18,10 @@ final class FloatingPanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
+        becomesKeyOnlyIfNeeded = true
     }
 
-    // 클릭은 받되 키 입력 창이 되지 않아 브라우저 입력이 끊기지 않는다
-    override var canBecomeKey: Bool { false }
+    // 입력칸(수동 카드 · 회사 선택)을 클릭할 때만 키 창이 된다. 아이콘 클릭은 브라우저 입력을 끊지 않는다
+    override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 }

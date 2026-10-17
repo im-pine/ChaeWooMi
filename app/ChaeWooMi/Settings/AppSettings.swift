@@ -14,8 +14,14 @@ final class AppSettings {
     private let defaults: UserDefaults
 
     var vaultPath: String? {
-        didSet { defaults.set(vaultPath, forKey: Key.vaultPath) }
+        didSet {
+            defaults.set(vaultPath, forKey: Key.vaultPath)
+            onVaultPathChange?()
+        }
     }
+
+    /// 볼트 경로가 바뀌면 카드가 12.0을 다시 읽는다
+    @ObservationIgnored var onVaultPathChange: (@MainActor () -> Void)?
 
     /// 역할별 세션 이름. 처음에는 기본 이름(Brain_of_Pine/JobAnalysis · Resume · Application)
     var sessionRoster: SessionRoster {
