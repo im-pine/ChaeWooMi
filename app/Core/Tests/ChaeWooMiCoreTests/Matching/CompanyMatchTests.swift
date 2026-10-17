@@ -23,6 +23,14 @@ struct CompanyNameTests {
         #expect(CompanyName.normalize("Virtual-Labs Inc.") == CompanyName.normalize("virtual labs inc"))
     }
 
+    @Test("자모로 나뉜 NFD 이름(macOS 파일 이름)도 같은 회사로 본다")
+    func decomposedHangul() {
+        let decomposed = "가상전자".decomposedStringWithCanonicalMapping
+        #expect(decomposed.unicodeScalars.count > 4)
+        #expect(CompanyName.normalize(decomposed) == "가상전자")
+        #expect(CompanyName.normalize("（주）" + decomposed) == "가상전자")
+    }
+
     @Test("원래 표기는 표시용으로 남긴다")
     func keepsOriginal() {
         let name = CompanyName("  (주)가상전자 ")

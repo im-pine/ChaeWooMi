@@ -26,6 +26,10 @@ struct VaultWriteGuardTests {
     @Test("모달에서 편집 중인 초안 Markdown에는 쓸 수 있다")
     func allowsEditingDraft() throws {
         let fixture = try WriteVault()
+
+        // 테스트 끝까지 임시 볼트를 지우지 않도록 붙잡아 둔다
+
+        defer { withExtendedLifetime(fixture) {} }
         try VaultWriteGuard.check(target: fixture.draft, editingDraft: fixture.draft, layout: fixture.layout)
         try DraftWriter(layout: fixture.layout, editingDraft: fixture.draft).save("# 고친 이력서", to: fixture.draft)
         #expect(try String(contentsOf: fixture.draft, encoding: .utf8) == "# 고친 이력서")
@@ -34,6 +38,10 @@ struct VaultWriteGuardTests {
     @Test("12.0 · 공고.md는 산출물 폴더 밖이라 쓰지 않는다")
     func refusesStatusAndPosting() throws {
         let fixture = try WriteVault()
+
+        // 테스트 끝까지 임시 볼트를 지우지 않도록 붙잡아 둔다
+
+        defer { withExtendedLifetime(fixture) {} }
         for target in [fixture.status, fixture.posting] {
             #expect(throws: VaultWriteGuard.Refusal.outsideOutputFolder) {
                 try VaultWriteGuard.check(target: target, editingDraft: target, layout: fixture.layout)
@@ -44,6 +52,10 @@ struct VaultWriteGuardTests {
     @Test("산출물 폴더 안이라도 편집 중이 아닌 초안에는 쓰지 않는다")
     func refusesOtherDraft() throws {
         let fixture = try WriteVault()
+
+        // 테스트 끝까지 임시 볼트를 지우지 않도록 붙잡아 둔다
+
+        defer { withExtendedLifetime(fixture) {} }
         #expect(throws: VaultWriteGuard.Refusal.notEditingDraft) {
             try VaultWriteGuard.check(target: fixture.otherDraft, editingDraft: fixture.draft, layout: fixture.layout)
         }
@@ -55,6 +67,10 @@ struct VaultWriteGuardTests {
     @Test("PDF는 세션이 만들므로 앱이 쓰지 않는다")
     func refusesPDF() throws {
         let fixture = try WriteVault()
+
+        // 테스트 끝까지 임시 볼트를 지우지 않도록 붙잡아 둔다
+
+        defer { withExtendedLifetime(fixture) {} }
         let pdf = fixture.draft.deletingPathExtension().appendingPathExtension("pdf")
         #expect(throws: VaultWriteGuard.Refusal.notMarkdown) {
             try VaultWriteGuard.check(target: pdf, editingDraft: pdf, layout: fixture.layout)
@@ -64,6 +80,10 @@ struct VaultWriteGuardTests {
     @Test("`..`로 산출물 폴더를 빠져나가는 경로는 막는다")
     func refusesTraversal() throws {
         let fixture = try WriteVault()
+
+        // 테스트 끝까지 임시 볼트를 지우지 않도록 붙잡아 둔다
+
+        defer { withExtendedLifetime(fixture) {} }
         let escape = fixture.layout.outputFolder!.appendingPathComponent("../../12 Job/12.0 지원 현황.md")
         #expect(throws: VaultWriteGuard.Refusal.outsideOutputFolder) {
             try VaultWriteGuard.check(target: escape, editingDraft: escape, layout: fixture.layout)
@@ -73,6 +93,10 @@ struct VaultWriteGuardTests {
     @Test("산출물 폴더 안의 링크가 12.0을 가리키면 막는다")
     func refusesSymlinkOut() throws {
         let fixture = try WriteVault()
+
+        // 테스트 끝까지 임시 볼트를 지우지 않도록 붙잡아 둔다
+
+        defer { withExtendedLifetime(fixture) {} }
         let link = fixture.layout.outputFolder!.appendingPathComponent("링크.md")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: fixture.status)
         #expect(throws: VaultWriteGuard.Refusal.outsideOutputFolder) {
@@ -83,6 +107,10 @@ struct VaultWriteGuardTests {
     @Test("거부되면 파일을 바꾸지 않는다")
     func refusedWriteLeavesFile() throws {
         let fixture = try WriteVault()
+
+        // 테스트 끝까지 임시 볼트를 지우지 않도록 붙잡아 둔다
+
+        defer { withExtendedLifetime(fixture) {} }
         let writer = DraftWriter(layout: fixture.layout, editingDraft: fixture.draft)
         #expect(throws: DraftWriter.WriteError.refused(.outsideOutputFolder)) {
             try writer.save("덮어쓰기", to: fixture.status)
