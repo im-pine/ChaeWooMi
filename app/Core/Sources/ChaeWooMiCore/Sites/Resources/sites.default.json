@@ -7,6 +7,7 @@
       "domains": ["saramin.co.kr"],
       "postingPatterns": ["^/zf_user/jobs/(relay/)?view\\?(.*&)?rec_idx=\\d+"],
       "completePatterns": [],
+      "completeTexts": ["지원이 완료되었습니다", "지원 완료되었습니다"],
       "company": {
         "jsonLd": true,
         "meta": [{ "property": "og:title", "pattern": "^\\[(.+?)\\]" }],
@@ -24,6 +25,7 @@
       "domains": ["jobkorea.co.kr"],
       "postingPatterns": ["^/Recruit/GI_Read/\\d+"],
       "completePatterns": [],
+      "completeTexts": ["지원이 완료되었습니다", "지원 완료되었습니다"],
       "company": {
         "jsonLd": true,
         "meta": [{ "property": "og:title", "pattern": "^(.+?) 채용 - " }],
@@ -38,6 +40,7 @@
       "domains": ["wanted.co.kr"],
       "postingPatterns": ["^/wd/\\d+"],
       "completePatterns": [],
+      "completeTexts": ["지원이 완료되었습니다", "지원 완료되었습니다"],
       "company": {
         "jsonLd": true,
         "meta": [{ "property": "og:title", "pattern": "^\\[(.+?)\\]" }],

@@ -13,8 +13,10 @@ public struct SiteConfig: Codable, Equatable, Sendable {
         public var domains: [String]
         /// `경로 + 쿼리`에 맞춰 보는 정규식. 하나라도 맞으면 공고 페이지
         public var postingPatterns: [String]
-        /// 지원 완료 화면 (3단계에서 사용)
+        /// 지원 완료 화면 주소: `경로 + 쿼리`에 맞춰 보는 정규식 (HIS-017)
         public var completePatterns: [String]
+        /// 지원 완료 화면 문구: 보이는 글자에 들어 있으면 완료 화면 (공백은 무시)
+        public var completeTexts: [String]
         public var company: CompanySource
         public var postingText: TextSource
         public var applyButtons: ApplyButtons

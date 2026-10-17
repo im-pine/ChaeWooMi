@@ -1,5 +1,6 @@
 import {
   applyButtonCovering,
+  completeOnPage,
   readPage,
   WAIT_FOR_COMPANY_MS,
   type PageReport,
@@ -55,6 +56,30 @@ function watchApplyButton(config: SiteConfig, ctx: ContentScriptContext) {
   check();
 }
 
+/** 지원 완료 화면(HIS-017)을 DOM 변화마다 0.5초 모아 확인하고, 주소마다 한 번만 알린다 */
+function watchCompletion(config: SiteConfig, ctx: ContentScriptContext) {
+  let reported: string | null = null;
+  let pending = false;
+  const check = () => {
+    pending = false;
+    if (reported === location.href || !completeOnPage(document, location.href, config)) return;
+    reported = location.href;
+    report({ kind: 'complete' });
+  };
+  const observer = new MutationObserver(() => {
+    if (pending) return;
+    pending = true;
+    ctx.setTimeout(check, 500);
+  });
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+  ctx.onInvalidated(() => observer.disconnect());
+  check();
+}
+
 export default defineContentScript({
   // 런타임 등록: background가 설정 도메인 중 권한이 있는 곳에만 등록한다 (WEB-002 · WEB-014)
   registration: 'runtime',
@@ -64,6 +89,7 @@ export default defineContentScript({
     const config = await currentConfig();
     scan(config, ctx);
     watchApplyButton(config, ctx);
+    watchCompletion(config, ctx);
     // SPA 주소 변경(원티드 등): 이전 회사 결과를 비우고 다시 읽는다 (WEB-015)
     ctx.addEventListener(window, 'wxt:locationchange', () => {
       report({ kind: 'left' });

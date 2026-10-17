@@ -89,7 +89,7 @@ final class BrowserBridge {
             connections.hello(id, version: version)
             try? connection.send(AppToExtension.ack(appVersion: Self.appVersion))
             try? connection.send(AppToExtension.siteConfig(siteConfig.config))
-        case .jobPage, .pageLeft, .applyButton:
+        case .jobPage, .pageLeft, .applyButton, .applyComplete:
             onPage?(message)
         }
     }

@@ -62,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case let .jobPage(page): cards.handle(.page(page))
         case .pageLeft: cards.handle(.pageLeft)
         case let .applyButton(covering): cards.applyButton(covering: covering)
-        case .hello: break
+        case .hello, .applyComplete: break  // 지원 완료 감지는 3단계 앱 PR에서 카드로 연결
         }
     }
 

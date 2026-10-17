@@ -1,4 +1,9 @@
-import type { ApplyButtonMessage, ExtensionToApp, JobPageMessage } from './protocol';
+import type {
+  ApplyButtonMessage,
+  ApplyCompleteMessage,
+  ExtensionToApp,
+  JobPageMessage,
+} from './protocol';
 
 /**
  * 탭마다 마지막 공고 상태를 기억하고, **보고 있는 탭**의 상태만 앱에 보낸다 (WEB-015).
@@ -7,10 +12,13 @@ import type { ApplyButtonMessage, ExtensionToApp, JobPageMessage } from './proto
 export class TabPages {
   private pages = new Map<number, JobPageMessage>();
   private active: number | null = null;
+  /** 가장 최근에 본 공고 (어느 탭이든). 지원 완료 화면이 팝업 · 다른 주소로 떠도 그 공고로 기록한다 */
+  private latest: JobPageMessage | null = null;
 
   /** 탭의 공고가 바뀜. 보고 있는 탭이면 앱에 보낼 메시지 */
   posting(tabId: number, page: JobPageMessage): ExtensionToApp | null {
     this.pages.set(tabId, page);
+    this.latest = page;
     return tabId === this.active ? page : null;
   }
 
@@ -38,6 +46,13 @@ export class TabPages {
   /** 탭이 새 페이지를 불러오기 시작함 (다른 사이트로 가도 알 수 있도록). 새 페이지가 공고면 콘텐츠 스크립트가 다시 알린다 */
   navigating(tabId: number): ExtensionToApp | null {
     return this.left(tabId);
+  }
+
+  /** 지원 완료 화면 감지 (HIS-017). 본 공고가 없으면 보내지 않는다 (회사를 모름) */
+  complete(): ApplyCompleteMessage | null {
+    if (!this.latest) return null;
+    const { site, url, companies, title } = this.latest;
+    return { type: 'applyComplete', site, url, companies, ...(title ? { title } : {}) };
   }
 
   /** 탭을 닫음 */

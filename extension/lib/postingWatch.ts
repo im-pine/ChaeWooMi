@@ -1,14 +1,16 @@
 import { applyButtons, coversCardZone } from './applyButton';
+import { isCompletePage } from './completion';
 import { extractPosting } from './extract';
 import type { JobPageMessage } from './protocol';
 import { sanitizeJobPage } from './sanitize';
-import { postingSite, type SiteConfig } from './siteConfig';
+import { domainSite, postingSite, type SiteConfig } from './siteConfig';
 
 /** 페이지를 한 번 읽은 결과 */
 export type PageRead = { kind: 'posting'; page: JobPageMessage } | { kind: 'left' };
 
 /** 콘텐츠 스크립트가 background에 보내는 것 */
-export type PageReport = PageRead | { kind: 'applyButton'; covering: boolean };
+export type PageReport =
+  PageRead | { kind: 'applyButton'; covering: boolean } | { kind: 'complete' };
 
 /** 회사명이 나타날 때까지 기다리는 최대 시간 (사람인은 본문을 나중에 불러옴) */
 export const WAIT_FOR_COMPANY_MS = 5000;
@@ -44,4 +46,10 @@ export function applyButtonCovering(
   return applyButtons(doc, site).some((button) =>
     coversCardZone(button.getBoundingClientRect(), viewport),
   );
+}
+
+/** 설정 사이트의 지원 완료 화면인가 (HIS-017). 공고 주소가 아니어도 도메인이 맞으면 본다 */
+export function completeOnPage(doc: Document, url: string, config: SiteConfig): boolean {
+  const site = domainSite(url, config);
+  return site ? isCompletePage(doc, url, site) : false;
 }
