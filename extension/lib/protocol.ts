@@ -1,7 +1,8 @@
 /** 확장 ↔ 앱 메시지 규약. 예시는 저장소 루트 `protocol/examples/` (Swift 테스트와 공용). */
 import { configProblems, type SiteConfig } from './siteConfig';
 
-export type HelloMessage = { type: 'hello'; extensionVersion: string };
+/** 연결 인사. `quiet`: 확장이 스스로 다시 연결한 것 → 호스트가 꺼진 앱을 실행하지 않는다 */
+export type HelloMessage = { type: 'hello'; extensionVersion: string; quiet?: boolean };
 
 /**
  * 지정 사이트 공고 (WEB-003 · 004 · 016). 회사명 후보는 구조화 데이터 → 메타 → DOM 순.
@@ -42,8 +43,8 @@ export type AckMessage = { type: 'ack'; appVersion: string };
 /** 앱 소유 지원 사이트 설정 (WEB-014) */
 export type SiteConfigMessage = { type: 'siteConfig'; config: SiteConfig };
 
-/** 지금 보고 있는 탭을 다시 읽어 달라 (카드의 "지원 이력 확인" 버튼) */
-export type RescanMessage = { type: 'rescan' };
+/** 지금 보고 있는 탭을 다시 읽어 달라 (카드의 "지원 이력 확인" 버튼). `reload`면 그 탭을 새로고침 (지정 사이트만) */
+export type RescanMessage = { type: 'rescan'; reload?: boolean };
 
 export type AppToExtension = AckMessage | SiteConfigMessage | RescanMessage;
 
@@ -68,12 +69,18 @@ function isJobPage(value: Record<string, unknown>): boolean {
   );
 }
 
+const isOptionalBoolean = (value: unknown) => value === undefined || typeof value === 'boolean';
+
+function isHello(value: Record<string, unknown>): boolean {
+  return typeof value.extensionVersion === 'string' && isOptionalBoolean(value.quiet);
+}
+
 /** 앱으로 보내는 메시지 모양 검사 */
 export function isExtensionToApp(value: unknown): value is ExtensionToApp {
   if (!isRecord(value)) return false;
   switch (value.type) {
     case 'hello':
-      return typeof value.extensionVersion === 'string';
+      return isHello(value);
     case 'jobPage':
       return isJobPage(value);
     case 'pageLeft':
@@ -98,6 +105,6 @@ export function isAppToExtension(value: unknown): value is AppToExtension {
   if (value.type === 'ack') return typeof value.appVersion === 'string';
   // 틀린 설정은 받지 않고 지금 설정을 그대로 쓴다
   if (value.type === 'siteConfig') return configProblems(value.config).length === 0;
-  if (value.type === 'rescan') return true;
+  if (value.type === 'rescan') return isOptionalBoolean(value.reload);
   return false;
 }

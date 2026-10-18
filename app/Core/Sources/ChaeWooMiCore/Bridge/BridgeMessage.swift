@@ -35,8 +35,8 @@ public enum AppToExtension: Equatable, Sendable {
     case ack(appVersion: String)
     /// 지원 사이트 설정 (앱 소유 파일). 확장은 이 설정으로 공고 페이지를 알아본다
     case siteConfig(SiteConfig)
-    /// 지금 보고 있는 탭을 다시 읽어 달라 (카드의 "지원 이력 확인" 버튼)
-    case rescan
+    /// 지금 보고 있는 탭을 다시 읽어 달라 (카드의 "지원 이력 확인" 버튼). `reload`면 그 탭을 새로고침한다 (지정 사이트만)
+    case rescan(reload: Bool)
 }
 
 extension ExtensionToApp: Codable {
@@ -85,7 +85,7 @@ extension ExtensionToApp: Codable {
 
 extension AppToExtension: Codable {
     private enum CodingKeys: String, CodingKey {
-        case type, appVersion, config
+        case type, appVersion, config, reload
     }
 
     public init(from decoder: any Decoder) throws {
@@ -96,7 +96,7 @@ extension AppToExtension: Codable {
         case "siteConfig":
             self = .siteConfig(try container.decode(SiteConfig.self, forKey: .config))
         case "rescan":
-            self = .rescan
+            self = .rescan(reload: try container.decodeIfPresent(Bool.self, forKey: .reload) ?? false)
         case let other:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "모르는 type: \(other)")
         }
@@ -111,8 +111,9 @@ extension AppToExtension: Codable {
         case let .siteConfig(config):
             try container.encode("siteConfig", forKey: .type)
             try container.encode(config, forKey: .config)
-        case .rescan:
+        case let .rescan(reload):
             try container.encode("rescan", forKey: .type)
+            if reload { try container.encode(true, forKey: .reload) }
         }
     }
 }

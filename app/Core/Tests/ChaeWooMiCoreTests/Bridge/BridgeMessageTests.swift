@@ -47,11 +47,16 @@ struct BridgeMessageTests {
 
     @Test("다시 읽기 요청은 예시와 같은 JSON이다")
     func encodesRescanLikeExample() throws {
-        let encoded = try JSONEncoder().encode(AppToExtension.rescan)
+        let encoded = try JSONEncoder().encode(AppToExtension.rescan(reload: false))
         let mine = try JSONSerialization.jsonObject(with: encoded) as? NSDictionary
         let expected = try JSONSerialization.jsonObject(with: example("rescan.json")) as? NSDictionary
         #expect(mine == expected)
-        #expect(try JSONDecoder().decode(AppToExtension.self, from: example("rescan.json")) == .rescan)
+        #expect(try JSONDecoder().decode(AppToExtension.self, from: example("rescan.json")) == .rescan(reload: false))
+        let reload = try JSONDecoder().decode(AppToExtension.self, from: example("rescan-reload.json"))
+        #expect(reload == .rescan(reload: true))
+        let reencoded = try JSONSerialization.jsonObject(with: try JSONEncoder().encode(reload)) as? NSDictionary
+        let expectedReload = try JSONSerialization.jsonObject(with: example("rescan-reload.json")) as? NSDictionary
+        #expect(reencoded == expectedReload)
     }
 
     @Test("모르는 type · 필수 필드 없음은 해석하지 않는다")
@@ -118,5 +123,17 @@ struct NativeMessageFramingTests {
         try pipe.fileHandleForWriting.close()
         #expect(NativeMessageFraming.readMessage(from: pipe.fileHandleForReading) == first)
         #expect(NativeMessageFraming.readMessage(from: pipe.fileHandleForReading) == nil)
+    }
+}
+
+@Suite("호스트의 앱 실행 판단")
+struct HostLaunchHintTests {
+    @Test("확장이 스스로 다시 연결한 인사(quiet)면 앱을 실행하지 않고, 보통 인사 · 다른 메시지는 실행해도 된다")
+    func quietHello() {
+        #expect(HostLaunchHint.isQuiet(Data(#"{"type":"hello","extensionVersion":"0.2.0","quiet":true}"#.utf8)))
+        #expect(!HostLaunchHint.isQuiet(Data(#"{"type":"hello","extensionVersion":"0.2.0"}"#.utf8)))
+        #expect(!HostLaunchHint.isQuiet(Data(#"{"type":"hello","quiet":false}"#.utf8)))
+        #expect(!HostLaunchHint.isQuiet(Data(#"{"type":"jobPage","quiet":true}"#.utf8)))
+        #expect(!HostLaunchHint.isQuiet(Data("not json".utf8)))
     }
 }

@@ -17,8 +17,8 @@ export type ConnectionDeps = {
   onState(state: ConnectionState): void;
   /** 앱이 보낸 지원 사이트 설정 */
   onConfig(config: SiteConfig): void;
-  /** 앱이 지금 탭을 다시 읽어 달라고 함 */
-  onRescan(): void;
+  /** 앱이 지금 탭을 다시 읽어 달라고 함. `reload`면 그 탭을 새로고침 */
+  onRescan(reload: boolean): void;
 };
 
 /**
@@ -28,7 +28,8 @@ export type ConnectionDeps = {
 export function createConnection(deps: ConnectionDeps) {
   let current: NativePort | null = null;
 
-  function connect() {
+  /** `quiet`: 확장이 스스로 다시 연결함 → 호스트가 꺼진 앱을 실행하지 않는다 */
+  function connect(quiet = false) {
     current?.disconnect();
     deps.onState({ kind: 'connecting' });
     const port = deps.connectNative(NATIVE_HOST);
@@ -38,14 +39,18 @@ export function createConnection(deps: ConnectionDeps) {
       if (message.type === 'ack')
         deps.onState({ kind: 'connected', appVersion: message.appVersion });
       else if (message.type === 'siteConfig') deps.onConfig(message.config);
-      else deps.onRescan();
+      else deps.onRescan(message.reload === true);
     });
     port.onDisconnect.addListener(() => {
       if (port !== current) return;
       current = null;
       deps.onState(stateFromDisconnect(deps.lastErrorMessage()));
     });
-    const hello: ExtensionToApp = { type: 'hello', extensionVersion: deps.extensionVersion };
+    const hello: ExtensionToApp = {
+      type: 'hello',
+      extensionVersion: deps.extensionVersion,
+      ...(quiet ? { quiet: true } : {}),
+    };
     port.postMessage(hello);
   }
 
@@ -58,5 +63,7 @@ export function createConnection(deps: ConnectionDeps) {
     current?.postMessage(message);
   }
 
-  return { connect, post };
+  const isConnected = () => current !== null;
+
+  return { connect, post, isConnected };
 }

@@ -41,7 +41,7 @@ function setup(lastError?: string) {
     extensionVersion: '0.1.0',
     onState: (state) => states.push(state),
     onConfig: (config) => configs.push(config),
-    onRescan: () => rescans.push(true),
+    onRescan: (reload) => rescans.push(reload),
   });
   return { connection, ports, states, configs, rescans };
 }
@@ -114,10 +114,20 @@ describe('앱이 보낸 설정', () => {
     expect(ports).toHaveLength(1);
   });
 
-  it('앱이 rescan을 보내면 다시 읽기를 요청한다 ("지원 이력 확인" 버튼)', () => {
+  it('앱이 rescan을 보내면 다시 읽기를, reload면 새로고침을 요청한다 ("지원 이력 확인" 버튼)', () => {
     const { connection, ports, rescans } = setup();
     connection.connect();
     ports[0]?.receive({ type: 'rescan' });
-    expect(rescans).toEqual([true]);
+    ports[0]?.receive({ type: 'rescan', reload: true });
+    expect(rescans).toEqual([false, true]);
+  });
+
+  it('스스로 다시 연결할 때는 인사에 quiet을 붙인다 (호스트가 꺼진 앱을 실행하지 않음)', () => {
+    const { connection, ports } = setup();
+    connection.connect(true);
+    expect(ports[0]?.posted[0]).toEqual({ type: 'hello', extensionVersion: '0.1.0', quiet: true });
+    expect(connection.isConnected()).toBe(true);
+    ports[0]?.drop();
+    expect(connection.isConnected()).toBe(false);
   });
 });
