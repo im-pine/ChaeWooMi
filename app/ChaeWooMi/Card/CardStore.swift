@@ -24,6 +24,9 @@ final class CardStore {
     @ObservationIgnored weak var documents: DocumentController?
     /// 지원 기록 (12.0이 바뀌면 반영을 확인한다)
     @ObservationIgnored weak var records: RecordController?
+    /// 확장에 지금 탭을 다시 읽어 달라고 보낸다. 보낼 연결이 없으면 false
+    @ObservationIgnored var requestRescan: (@MainActor () -> Bool)?
+    @ObservationIgnored private var rescanFallback: Task<Void, Never>?
     @ObservationIgnored private lazy var watcher = VaultWatcher { [weak self] in self?.vaultChanged() }
     @ObservationIgnored private var watchedPaths: VaultPaths?
 
@@ -47,6 +50,28 @@ final class CardStore {
         if case .pageLeft = event { resetView() }
         model.handle(event, lookup: lookup)
     }
+
+    /// "지원 이력 확인" 버튼: 접힌 카드는 펼치고, 카드가 없으면 지금 공고를 다시 읽는다.
+    /// 잠시 기다려도 공고가 오지 않으면(지정 외 사이트 · 브라우저 연결 없음) 수동 조회 카드를 연다
+    func checkHistory() {
+        guard content == .hidden else {
+            collapsed = false
+            return
+        }
+        rescanFallback?.cancel()
+        guard requestRescan?() == true else {
+            handle(.manualActivated)
+            return
+        }
+        rescanFallback = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.rescanWait))
+            guard !Task.isCancelled, let self, content == .hidden else { return }
+            handle(.manualActivated)
+        }
+    }
+
+    /// 다시 읽기를 기다리는 시간 (사람인은 본문을 늦게 불러와 회사명이 늦게 나올 수 있음)
+    static let rescanWait: Double = 2.5
 
     func applyButton(covering: Bool) {
         applyButtonCovering = covering

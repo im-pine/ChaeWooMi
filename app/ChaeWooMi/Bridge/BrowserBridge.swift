@@ -8,6 +8,8 @@ import Observation
 final class BrowserBridge {
     private(set) var registration: NativeHostManifest.Registration = .missing
     private(set) var connections = ExtensionConnections()
+    /// 인사를 마친 확장 연결 (앱 → 확장으로 보낼 때)
+    @ObservationIgnored private var greeted: [Int: BridgeConnection] = [:]
     private(set) var serverError: String?
     /// 지원 사이트 설정 (WEB-014). 파일이 틀렸으면 기본값으로 동작하고 problems에 이유를 담는다
     private(set) var siteConfig = SiteConfigStore.Loaded(config: .defaultConfig, problems: [])
@@ -87,6 +89,7 @@ final class BrowserBridge {
         switch message {
         case let .hello(version):
             connections.hello(id, version: version)
+            greeted[id] = connection
             try? connection.send(AppToExtension.ack(appVersion: Self.appVersion))
             try? connection.send(AppToExtension.siteConfig(siteConfig.config))
         case .jobPage, .pageLeft, .applyButton, .applyComplete:
@@ -94,7 +97,14 @@ final class BrowserBridge {
         }
     }
 
+    /// 열린 확장에 지금 탭을 다시 읽어 달라고 보낸다 ("지원 이력 확인" 버튼). 보낸 연결이 없으면 false
+    func requestRescan() -> Bool {
+        let sent = greeted.values.filter { (try? $0.send(AppToExtension.rescan)) != nil }
+        return !sent.isEmpty
+    }
+
     private func connectionClosed(_ id: Int) {
+        greeted[id] = nil
         connections.closed(id)
     }
 

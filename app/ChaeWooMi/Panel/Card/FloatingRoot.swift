@@ -11,9 +11,12 @@ struct FloatingRoot: View {
             if let records = store.records, records.presenting {
                 ApplyCompleteCard(records: records)
             }
-            if store.showsLauncherOnly {
+            if store.applyButtonCovering {
+                // 지원 버튼을 가리지 않게 작게 (APP-015)
                 Button { store.collapsed = false } label: { LauncherView() }
                     .buttonStyle(.plain)
+            } else if store.showsLauncherOnly {
+                HistoryCheckButton { store.checkHistory() }
             } else {
                 card
             }

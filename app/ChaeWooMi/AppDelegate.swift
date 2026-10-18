@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cards.start()
         cards.documents = documents
         cards.records = records
+        cards.requestRescan = { [unowned self] in bridge.requestRescan() }
         // 회신은 id로 제 요청만 받는다
         sessions.onReply = { [unowned self] reply in
             documents.received(reply)
