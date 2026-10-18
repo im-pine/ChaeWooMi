@@ -24,8 +24,8 @@ struct CheckSection: View {
     private func run() async {
         running = true
         defer { running = false }
-        let path = settings.vaultPath
-        let vault = await Task.detached { Self.vaultItems(path: path) }.value
+        let paths = settings.vaultPaths
+        let vault = await Task.detached { Self.vaultItems(paths: paths) }.value
         await sessions.refresh()
         bridge.installHostManifest()
         let session = SettingsCheck.sessionItem(
@@ -36,12 +36,8 @@ struct CheckSection: View {
         items = vault + [session, SettingsCheck.browserItem(bridge.status)]
     }
 
-    private nonisolated static func vaultItems(path: String?) -> [SettingsCheckItem] {
-        guard let path, !path.isEmpty else { return SettingsCheck.vaultNotSet() }
-        let url = URL(fileURLWithPath: path, isDirectory: true)
-        return SettingsCheck.vaultItems(Result { () throws(ApplicationStatusLoader.LoadError) in
-            try ApplicationStatusLoader.load(vault: url)
-        })
+    private nonisolated static func vaultItems(paths: VaultPaths) -> [SettingsCheckItem] {
+        SettingsCheck.vaultItems(paths: paths)
     }
 }
 

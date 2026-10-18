@@ -106,3 +106,22 @@ struct StandardSavePathTests {
         #expect(driver.opened.map(\.lastPathComponent) == ["테스터_이력서_가상전자.md"])
     }
 }
+
+@Suite("설정 점검: 항목별 저장 위치")
+struct VaultPathsCheckTests {
+    @Test("산출물 폴더 · 이름이 비면 볼트 경로 항목이 실패하고 이유를 모두 보인다, 12.0 읽기는 따로 통과")
+    func missingOutput() throws {
+        let fixture = try SplitVault()
+        defer { withExtendedLifetime(fixture) {} }
+        var paths = fixture.paths
+        paths.outputFolder = ""
+        paths.ownerName = " "
+        let items = SettingsCheck.vaultItems(paths: paths)
+        #expect(items.map(\.kind) == [.vaultPath, .statusParser])
+        #expect(items[0].outcome == .failed(
+            "이력서 · 자기소개서 폴더(`11.0.0 Output`)를 선택하세요\n파일 이름에 쓸 이름을 입력하세요"
+        ))
+        #expect(items[1].outcome == .passed("기록 1건"))
+        #expect(SettingsCheck.vaultItems(paths: fixture.paths).allSatisfy { !$0.needsAttention })
+    }
+}

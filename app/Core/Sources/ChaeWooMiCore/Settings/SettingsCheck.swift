@@ -54,6 +54,18 @@ public enum SettingsCheck {
         }
     }
 
+    /// 항목별 저장 위치로 점검한다. 공고 분석 · 산출물 폴더 · 이름 문제는 볼트 경로 항목에 모아 실패로 보인다
+    public static func vaultItems(paths: VaultPaths) -> [SettingsCheckItem] {
+        guard !paths.statusFile.isEmpty else { return vaultNotSet() }
+        let items = vaultItems(Result { () throws(ApplicationStatusLoader.LoadError) in
+            try ApplicationStatusLoader.load(paths: paths)
+        })
+        let problems = paths.problems.filter { $0 != .statusFileMissing }
+        guard !problems.isEmpty else { return items }
+        let reason = problems.map(\.message).joined(separator: "\n")
+        return [SettingsCheckItem(kind: .vaultPath, outcome: .failed(reason))] + items.dropFirst()
+    }
+
     /// 볼트 경로를 아직 지정하지 않음
     public static func vaultNotSet() -> [SettingsCheckItem] {
         pathFailed("볼트 경로를 지정하세요")

@@ -8,6 +8,7 @@ import Observation
 final class AppSettings {
     private enum Key {
         static let vaultPath = "vaultPath"
+        static let vaultPaths = "vaultPaths"
         static let sessionRoster = "sessionRoster"
     }
 
@@ -18,14 +19,15 @@ final class AppSettings {
 
     private let defaults: UserDefaults
 
-    var vaultPath: String? {
+    /// 항목별 저장 위치 · 이름 규칙 (2026-10-18). 처음에는 예전 볼트 폴더에서 찾을 수 있는 만큼 옮긴다
+    var vaultPaths: VaultPaths {
         didSet {
-            defaults.set(vaultPath, forKey: Key.vaultPath)
+            defaults.set(try? JSONEncoder().encode(vaultPaths), forKey: Key.vaultPaths)
             onVaultPathChange?()
         }
     }
 
-    /// 볼트 경로가 바뀌면 카드가 12.0을 다시 읽는다
+    /// 위치 · 이름 규칙이 바뀌면 카드가 12.0을 다시 읽는다
     @ObservationIgnored var onVaultPathChange: (@MainActor () -> Void)?
 
     /// 역할별 세션 이름. 처음에는 기본 이름(Brain_of_Pine/JobAnalysis · Resume · Application)
@@ -35,7 +37,12 @@ final class AppSettings {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        vaultPath = defaults.string(forKey: Key.vaultPath)
+        // 예전 설정(볼트 폴더 하나)은 처음 한 번 항목별 위치로 옮길 때만 읽는다
+        let legacy = defaults.string(forKey: Key.vaultPath)
+        vaultPaths = defaults.data(forKey: Key.vaultPaths)
+            .flatMap { try? JSONDecoder().decode(VaultPaths.self, from: $0) }
+            ?? legacy.flatMap { VaultPaths.detected(vault: URL(fileURLWithPath: $0, isDirectory: true)) }
+            ?? VaultPaths(statusFile: "", postingFolder: "", outputFolder: "", ownerName: "")
         autoLaunchFromBrowser = AutoLaunchPolicy.isEnabled(defaults)
         sessionRoster = defaults.data(forKey: Key.sessionRoster)
             .flatMap { try? JSONDecoder().decode(SessionRoster.self, from: $0) }?

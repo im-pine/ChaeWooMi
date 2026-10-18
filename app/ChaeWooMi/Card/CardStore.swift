@@ -25,7 +25,7 @@ final class CardStore {
     /// 지원 기록 (12.0이 바뀌면 반영을 확인한다)
     @ObservationIgnored weak var records: RecordController?
     @ObservationIgnored private lazy var watcher = VaultWatcher { [weak self] in self?.vaultChanged() }
-    @ObservationIgnored private var watchedPath: String?
+    @ObservationIgnored private var watchedPaths: VaultPaths?
 
     init(settings: AppSettings) {
         self.settings = settings
@@ -52,26 +52,28 @@ final class CardStore {
         applyButtonCovering = covering
     }
 
-    /// 볼트 경로가 바뀌었거나 파일이 바뀜
+    /// 저장 위치가 바뀌었거나 파일이 바뀜
     func reloadVault() {
-        guard let path = settings.vaultPath, !path.isEmpty else {
+        let paths = settings.vaultPaths
+        guard !paths.statusFile.isEmpty else {
             loaded = nil
             loadError = nil
-            watcher.watch(nil)
-            watchedPath = nil
+            watcher.watch([])
+            watchedPaths = nil
             return
         }
-        let root = URL(fileURLWithPath: path, isDirectory: true)
         do {
-            loaded = try ApplicationStatusLoader.load(vault: root)
+            loaded = try ApplicationStatusLoader.load(paths: paths)
             loadError = nil
         } catch {
             loaded = nil
             loadError = error
         }
-        if watchedPath != path {
-            watcher.watch(root)
-            watchedPath = path
+        if watchedPaths != paths {
+            let layout = paths.layout
+            watcher.watch([layout.statusFile.deletingLastPathComponent(), layout.activeFolder, layout.outputFolder]
+                .compactMap { $0 })
+            watchedPaths = paths
         }
     }
 
