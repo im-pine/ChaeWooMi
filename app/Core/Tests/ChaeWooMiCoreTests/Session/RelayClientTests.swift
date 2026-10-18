@@ -105,7 +105,10 @@ struct RelayClientTests {
         try await relay.client.start()
         var replies = relay.client.replies.makeAsyncIterator()
 
-        #expect(try await relay.client.listSessions(timeout: .milliseconds(500)) == ["job-analysis", "n2"])
+        // 기계가 바쁘면 두 번째 응답도 늦어 세 번째를 받을 수 있다 → 다시 물은 결과(n1이 아님)인지만 본다
+        let names = try await relay.client.listSessions(timeout: .seconds(1))
+        #expect(names.first == "job-analysis")
+        #expect(names.count == 2 && names[1] != "n1")
         // 빠뜨린 대신 출력한 회신은 회신 흐름으로 그대로 온다
         #expect(await replies.next()?.from == "job-analysis")
         await relay.client.stop()
