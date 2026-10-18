@@ -15,6 +15,11 @@ while IFS= read -r line; do
         sed -n 's/.*\\"id\\":\\"\([^\\]*\)\\".*/\1/p')
       # 첫 목록 요청만 1초 늦게 답한다 (시간 초과 뒤 늦은 응답 시험)
       if [ "$lists" -eq 1 ] && [ -n "$SLOW_FIRST_LIST" ]; then sleep 1; fi
+      # 첫 목록 요청에 목록 대신 막 도착한 회신 한 줄만 출력한다 (실측한 중계 모델 동작)
+      if [ "$lists" -eq 1 ] && [ -n "$DROP_FIRST_LIST" ]; then
+        say '{\"event\":\"reply\",\"from\":\"job-analysis\",\"text\":\"[채우미 회신] id=a-1 결과=완료\"}'
+        continue
+      fi
       names="[\\\"job-analysis\\\",\\\"n$lists\\\"]"
       say "{\\\"event\\\":\\\"agents\\\",\\\"id\\\":\\\"$id\\\",\\\"names\\\":$names}" ;;
     *'\"to\":\"resume\"'*)
@@ -88,9 +93,21 @@ struct RelayClientTests {
         try await relay.client.start()
 
         await #expect(throws: RelayClient.RelayError.timedOut) {
-            try await relay.client.listSessions(timeout: .milliseconds(300))
+            try await relay.client.listSessions(timeout: .milliseconds(300), attempts: 1)
         }
         #expect(try await relay.client.listSessions() == ["job-analysis", "n2"])
+        await relay.client.stop()
+    }
+
+    @Test("목록 응답을 빠뜨리면 다시 물어 목록을 받는다 (회신과 목록 요청이 겹친 실측 버그)")
+    func listRetriedWhenDropped() async throws {
+        let relay = try FakeRelay(prelude: "DROP_FIRST_LIST=1")
+        try await relay.client.start()
+        var replies = relay.client.replies.makeAsyncIterator()
+
+        #expect(try await relay.client.listSessions(timeout: .milliseconds(500)) == ["job-analysis", "n2"])
+        // 빠뜨린 대신 출력한 회신은 회신 흐름으로 그대로 온다
+        #expect(await replies.next()?.from == "job-analysis")
         await relay.client.stop()
     }
 
