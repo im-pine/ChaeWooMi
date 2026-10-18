@@ -92,7 +92,7 @@ final class BrowserBridge {
             greeted[id] = connection
             try? connection.send(AppToExtension.ack(appVersion: Self.appVersion))
             try? connection.send(AppToExtension.siteConfig(siteConfig.config))
-        case .jobPage, .pageLeft, .applyButton, .applyComplete:
+        case .jobPage, .pageLeft, .applyButton, .applyComplete, .notPosting:
             onPage?(message)
         }
     }

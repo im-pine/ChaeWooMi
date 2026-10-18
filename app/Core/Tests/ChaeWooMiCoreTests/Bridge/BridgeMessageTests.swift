@@ -28,6 +28,7 @@ struct BridgeMessageTests {
         #expect(try decoder.decode(ExtensionToApp.self, from: example("page-left.json")) == .pageLeft)
         let apply = try decoder.decode(ExtensionToApp.self, from: example("apply-button.json"))
         #expect(apply == .applyButton(covering: true))
+        #expect(try decoder.decode(ExtensionToApp.self, from: example("not-posting.json")) == .notPosting)
         let complete = try decoder.decode(ExtensionToApp.self, from: example("apply-complete.json"))
         #expect(complete == .applyComplete(JobPage(
             site: "wanted",

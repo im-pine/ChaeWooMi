@@ -3,7 +3,7 @@ import type { ConnectionState } from '@/lib/native';
 import type { ExtensionToApp } from '@/lib/protocol';
 import { RESCAN, type PageReport } from '@/lib/postingWatch';
 import { POSTING_SCRIPT_ID, splitByPermission } from '@/lib/registration';
-import { configProblems, DEFAULT_CONFIG, domainSite, type SiteConfig } from '@/lib/siteConfig';
+import { configProblems, DEFAULT_CONFIG, postingSite, type SiteConfig } from '@/lib/siteConfig';
 import { TabPages, type TabPagesState } from '@/lib/tabPages';
 
 let state: ConnectionState = { kind: 'connecting' };
@@ -28,9 +28,14 @@ const saveTabs = () =>
 async function rescanActiveTab(post: (message: ExtensionToApp) => void, reload: boolean) {
   const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
   if (tab?.id === undefined) return;
-  // 다시 읽어도 회사명이 없으면 앱이 새로고침을 요청한다. 지정 사이트 탭만 (다른 사이트를 새로 고칠 이유가 없음)
+  // 지정 사이트 공고 주소가 아니면 다시 읽기 · 새로고침이 소용없다 → 앱이 바로 직접 입력으로
+  if (!tab.url || !postingSite(tab.url, await currentConfig())) {
+    post({ type: 'notPosting' });
+    return;
+  }
+  // 다시 읽어도 회사명이 없으면 앱이 새로고침을 요청한다
   if (reload) {
-    if (tab.url && domainSite(tab.url, await currentConfig())) await browser.tabs.reload(tab.id);
+    await browser.tabs.reload(tab.id);
     return;
   }
   post(tabs.activate(tab.id));

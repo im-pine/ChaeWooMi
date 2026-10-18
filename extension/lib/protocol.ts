@@ -35,8 +35,16 @@ export type ApplyCompleteMessage = {
   title?: string;
 };
 
+/** 다시 읽기 요청을 받았지만 지금 탭이 지정 사이트 공고가 아님 → 앱은 새로고침을 건너뛰고 직접 입력으로 */
+export type NotPostingMessage = { type: 'notPosting' };
+
 export type ExtensionToApp =
-  HelloMessage | JobPageMessage | PageLeftMessage | ApplyButtonMessage | ApplyCompleteMessage;
+  | HelloMessage
+  | JobPageMessage
+  | PageLeftMessage
+  | ApplyButtonMessage
+  | ApplyCompleteMessage
+  | NotPostingMessage;
 
 export type AckMessage = { type: 'ack'; appVersion: string };
 
@@ -75,28 +83,29 @@ function isHello(value: Record<string, unknown>): boolean {
   return typeof value.extensionVersion === 'string' && isOptionalBoolean(value.quiet);
 }
 
+const isApplyComplete = (value: Record<string, unknown>) =>
+  typeof value.site === 'string' &&
+  typeof value.url === 'string' &&
+  isStrings(value.companies) &&
+  isOptionalString(value.title);
+
+/** 메시지 종류별 모양 검사 */
+const EXTENSION_TO_APP: Record<string, (value: Record<string, unknown>) => boolean> = {
+  hello: isHello,
+  jobPage: isJobPage,
+  pageLeft: () => true,
+  notPosting: () => true,
+  applyButton: (value) => typeof value.covering === 'boolean',
+  applyComplete: isApplyComplete,
+};
+
 /** 앱으로 보내는 메시지 모양 검사 */
 export function isExtensionToApp(value: unknown): value is ExtensionToApp {
-  if (!isRecord(value)) return false;
-  switch (value.type) {
-    case 'hello':
-      return isHello(value);
-    case 'jobPage':
-      return isJobPage(value);
-    case 'pageLeft':
-      return true;
-    case 'applyButton':
-      return typeof value.covering === 'boolean';
-    case 'applyComplete':
-      return (
-        typeof value.site === 'string' &&
-        typeof value.url === 'string' &&
-        isStrings(value.companies) &&
-        isOptionalString(value.title)
-      );
-    default:
-      return false;
-  }
+  if (!isRecord(value) || typeof value.type !== 'string') return false;
+  const check = Object.hasOwn(EXTENSION_TO_APP, value.type)
+    ? EXTENSION_TO_APP[value.type]
+    : undefined;
+  return check?.(value) ?? false;
 }
 
 /** 앱이 보낸 메시지 모양 검사. 모르는 메시지는 버린다 */

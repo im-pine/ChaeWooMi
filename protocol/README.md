@@ -12,6 +12,7 @@ TypeScript(`extension/lib/protocol.ts`)와 Swift(`app/Core`) 테스트가 **같�
 | `examples/apply-complete.json` | 확장 → 앱 | 지원 완료 화면 감지 (HIS-017): 가장 최근 공고의 사이트 · 주소 · 회사명 후보 · 제목. 앱이 5초 카운트다운 뒤 기록을 요청한다 |
 | `examples/rescan.json` | 앱 → 확장 | 지금 보고 있는 탭을 다시 읽어 달라 (카드의 "지원 이력 확인" 버튼). 콘텐츠 스크립트가 응답하지 않으면 확장이 그 탭에 다시 넣는다 |
 | `examples/rescan-reload.json` | 앱 → 확장 | 다시 읽어도 회사명이 없을 때 지금 탭을 새로고침 (지정 사이트 탭만) |
+| `examples/not-posting.json` | 확장 → 앱 | 다시 읽기 요청을 받았지만 지금 탭이 지정 사이트 공고 주소가 아님 → 앱은 새로고침을 건너뛰고 직접 입력으로 |
 | `examples/ack.json` | 앱 → 확장 | 인사 응답 (앱 버전) |
 | `sites.default.json` | 앱 → 확장 (`{"type":"siteConfig","config":…}`) | 지원 사이트 설정 기본값 (WEB-014). 앱은 `~/Library/Application Support/ChaeWooMi/sites.json`을 쓰고, 없으면 이 값으로 만든다 |
 
