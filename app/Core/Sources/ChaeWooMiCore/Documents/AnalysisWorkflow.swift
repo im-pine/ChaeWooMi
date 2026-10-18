@@ -15,8 +15,11 @@ public struct AnalysisWorkflow: Equatable, Sendable {
         public let platform: String
         public let url: String
         public let postingText: String?
+        /// 설정의 저장 규칙으로 정한 `공고.md` 경로
+        public let postingPath: String?
 
-        public init(company: String, platform: String, url: String, postingText: String?) {
+        public init(company: String, platform: String, url: String, postingText: String?, postingPath: String? = nil) {
+            self.postingPath = postingPath
             self.company = company
             self.platform = platform
             self.url = url
@@ -86,7 +89,7 @@ public struct AnalysisWorkflow: Equatable, Sendable {
         phase = .running(requestID: id)
         return .analysis(
             company: input.company, platform: input.platform, url: input.url,
-            postingText: input.postingText, supplement: supplement
+            postingText: input.postingText, supplement: supplement, savePath: input.postingPath
         )
     }
 }

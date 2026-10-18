@@ -3,9 +3,15 @@ import Foundation
 /// 채우미 → 역할 세션 요청 (볼트 `00.0.7 채우미 연동 지침` 2 · 3장 형식).
 public enum SessionRequest: Equatable, Sendable {
     /// `supplement`: 분석 실패 뒤 사용자가 보완한 글 (ANL-003). 사용자 입력이라 비신뢰 블록에 넣지 않는다
-    case analysis(company: String, platform: String, url: String, postingText: String?, supplement: String? = nil)
-    case resumeDraft(company: String, url: String, postingText: String?)
-    case coverLetterDraft(company: String, url: String, postingText: String?, questions: [CoverLetterQuestion])
+    /// `savePath`: 설정의 저장 규칙으로 정한 결과 파일 경로. 세션은 그 경로에 쓴다 (2026-10-18 표준화)
+    case analysis(
+        company: String, platform: String, url: String, postingText: String?, supplement: String? = nil,
+        savePath: String? = nil
+    )
+    case resumeDraft(company: String, url: String, postingText: String?, savePath: String? = nil)
+    case coverLetterDraft(
+        company: String, url: String, postingText: String?, questions: [CoverLetterQuestion], savePath: String? = nil
+    )
     case edit(company: String, kind: DocumentKind, draftPath: String, command: String, userEdited: Bool)
     case pdf(company: String, kind: DocumentKind, draftPath: String, userEdited: Bool)
     case record(company: String, role: String, platform: String, submitted: CalendarDay)
@@ -33,18 +39,18 @@ public enum SessionRequest: Equatable, Sendable {
 
     /// 세션에 보낼 글 (글자 그대로 전달된다)
     public func text(id: String) -> String {
-        ([RequestText.header(kindLabel, id: id)] + fields + RequestText.replyFormat(id: id) + untrusted)
+        ([RequestText.header(kindLabel, id: id)] + fields + saveLines + RequestText.replyFormat(id: id) + untrusted)
             .joined(separator: "\n")
     }
 
     private var fields: [String] {
         switch self {
-        case let .analysis(company, platform, url, _, supplement):
+        case let .analysis(company, platform, url, _, supplement, _):
             ["회사: \(company)", "플랫폼: \(platform)", "공고 주소: \(url)"]
                 + (supplement.map { ["사용자 보완: \(RequestText.oneLine($0))"] } ?? [])
-        case let .resumeDraft(company, url, _):
+        case let .resumeDraft(company, url, _, _):
             ["회사: \(company)", "공고 주소: \(url)"]
-        case let .coverLetterDraft(company, url, _, questions):
+        case let .coverLetterDraft(company, url, _, questions, _):
             ["회사: \(company)", "공고 주소: \(url)", "문항:"] + questions.enumerated().map { $1.line(number: $0 + 1) }
         case let .edit(company, _, path, command, edited):
             ["회사: \(company)", "초안: \(path)", RequestText.edited(edited), "수정 명령: \(RequestText.oneLine(command))"]
@@ -55,10 +61,24 @@ public enum SessionRequest: Equatable, Sendable {
         }
     }
 
+    /// 결과 파일을 쓸 경로 (설정의 저장 규칙). PDF는 승인한 초안과 같은 이름 `.pdf`
+    private var saveLines: [String] {
+        switch self {
+        case let .analysis(_, _, _, _, _, path?), let .resumeDraft(_, _, _, path?),
+             let .coverLetterDraft(_, _, _, _, path?):
+            ["저장 경로: \(path)"]
+        case let .pdf(_, _, draft, _):
+            ["저장 경로: \(URL(fileURLWithPath: draft).deletingPathExtension().appendingPathExtension("pdf").path)"]
+        default:
+            []
+        }
+    }
+
     /// 공고 원문은 비신뢰 자료 블록으로 감싼다 (AGT-011). 문서 요청에도 지금 공고 원문을 붙인다 (ANL-013)
     private var untrusted: [String] {
         switch self {
-        case let .analysis(_, _, _, text, _), let .resumeDraft(_, _, text), let .coverLetterDraft(_, _, text, _):
+        case let .analysis(_, _, _, text, _, _), let .resumeDraft(_, _, text, _),
+             let .coverLetterDraft(_, _, text, _, _):
             RequestText.untrustedBlock("공고 원문", text)
         case .edit, .pdf, .record:
             []

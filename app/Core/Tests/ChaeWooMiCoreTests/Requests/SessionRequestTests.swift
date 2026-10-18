@@ -86,7 +86,10 @@ struct SessionRequestTests {
         #expect(edit.contains("수정 명령: 요약을 줄여 주세요"))
         let pdf = SessionRequest.pdf(company: "가상전자", kind: .resume, draftPath: "11 Job/초안.md", userEdited: false)
             .text(id: "q4")
-        #expect(pdf.hasPrefix("[채우미 요청] PDF 생성 id=q4\n회사: 가상전자\n초안: 11 Job/초안.md\n사용자 직접 수정: 없음\n회신:"))
+        #expect(pdf.hasPrefix(
+            "[채우미 요청] PDF 생성 id=q4\n회사: 가상전자\n초안: 11 Job/초안.md\n사용자 직접 수정: 없음\n저장 경로: "
+        ))
+        #expect(pdf.contains("저장 경로: ") && pdf.contains("11 Job/초안.pdf\n회신:"))
         #expect(pdf.contains("[채우미 회신] id=q4 결과=완료"))
     }
 

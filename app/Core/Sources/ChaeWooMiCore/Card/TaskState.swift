@@ -88,12 +88,10 @@ public enum TaskStateRule {
         return fileState(kind, folders: folders)
     }
 
+    /// 공고 분석은 `{공고 분석 폴더}/{기업명}/공고.md`에 저장된다 → 파일이 있으면 분석 완료 (사용자 결정, 2026-10-18).
+    /// 실제 세션은 헤딩을 `## 2. 공고 해석` · `## 2. 매칭` 등으로 제각각 써서 헤딩으로는 판정하지 않는다
     private static func analysisDone(_ folders: CompanyFolders) -> Bool {
-        folders.companyFolders.contains { folder in
-            let posting = folder.appendingPathComponent("공고.md")
-            guard let text = try? String(contentsOf: posting, encoding: .utf8) else { return false }
-            return text.components(separatedBy: .newlines).contains(where: isAnalysisHeading)
-        }
+        postingExists(folders)
     }
 
     private static func documentState(_ kind: TaskKind, folders: CompanyFolders) -> TaskState {

@@ -63,16 +63,17 @@ final class FakeSession {
 
     private func perform(_ request: SessionRequest) throws -> String {
         switch request {
-        case let .analysis(company, _, _, _, _):
+        case let .analysis(company, _, _, _, _, savePath):
             let posting = realisticAnalysis
                 ? "# 공고\n\n## 1. 확인된 공고 내용\n원문\n\n## 2. 사용자 기준 적합성\n판단"
                 : "# 공고\n\n## 모집 직무\n원문\n\n## 공고 해석\n분석"
-            return try write("12 JobOpening/12.1 Active/\(folder(company))/공고.md", posting)
-        case let .resumeDraft(company, _, _):
-            return try write(outputPath(company, "이력서", "md"), "# 이력서\n요약")
-        case let .coverLetterDraft(company, _, _, questions):
+            // 실제 세션처럼 요청의 `저장 경로`가 있으면 그곳에 쓴다
+            return try write(savePath ?? "12 JobOpening/12.1 Active/\(folder(company))/공고.md", posting)
+        case let .resumeDraft(company, _, _, savePath):
+            return try write(savePath ?? outputPath(company, "이력서", "md"), "# 이력서\n요약")
+        case let .coverLetterDraft(company, _, _, questions, savePath):
             let answers = questions.map { "## \($0.text)\n답변" }.joined(separator: "\n")
-            return try write(outputPath(company, "자기소개서", "md"), answers)
+            return try write(savePath ?? outputPath(company, "자기소개서", "md"), answers)
         case let .edit(_, _, path, command, _):
             let url = URL(fileURLWithPath: path)
             let edited = try String(contentsOf: url, encoding: .utf8) + "\n(수정: \(command))"
@@ -129,6 +130,15 @@ final class FakeSession {
     }
 
     private func write(_ relative: String, _ text: String) throws -> String {
+        guard !relative.hasPrefix("/") else {
+            // 요청의 저장 경로(절대 경로)
+            let url = URL(fileURLWithPath: relative)
+            let folder = url.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try text.write(to: url, atomically: true, encoding: .utf8)
+            try touch(url)
+            return relative
+        }
         let url = try vault.write(relative, text)
         try touch(url)
         return relative

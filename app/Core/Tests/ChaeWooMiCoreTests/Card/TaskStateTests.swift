@@ -60,7 +60,7 @@ struct CompanyFoldersTests {
 
 @Suite("아이콘 3종 독립 상태 (APP-012) · 클릭 분기 (APP-017)")
 struct TaskStateTests {
-    @Test("분석은 공고.md에 `## 공고 해석`이 있으면 완료, 없으면 시작 전")
+    @Test("분석은 회사 폴더에 공고.md가 있으면 완료(헤딩 무관), 회사 폴더가 없으면 시작 전 (사용자 결정 2026-10-18)")
     func analysis() throws {
         let fixture = try CardVault()
 
@@ -68,8 +68,10 @@ struct TaskStateTests {
 
         defer { withExtendedLifetime(fixture) {} }
         let done = CompanyFolders.find(company: "가상전자", in: fixture.layout)
-        let notYet = CompanyFolders.find(company: "가상물산", in: fixture.layout)
+        let onlyPosting = CompanyFolders.find(company: "가상물산", in: fixture.layout)
+        let notYet = CompanyFolders.find(company: "가상상사", in: fixture.layout)
         #expect(TaskStateRule.fileState(.analysis, folders: done) == .completed)
+        #expect(TaskStateRule.fileState(.analysis, folders: onlyPosting) == .completed)
         #expect(TaskStateRule.fileState(.analysis, folders: notYet) == .ready)
     }
 
