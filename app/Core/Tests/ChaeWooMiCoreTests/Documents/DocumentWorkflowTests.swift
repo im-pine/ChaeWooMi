@@ -236,3 +236,20 @@ struct DocumentWorkflowTests {
         #expect(flow.handle(.reopen(input(.resume), snapshot(analysis: true))).isEmpty)
     }
 }
+
+@Suite("진행 단계 이름")
+struct ProgressLabelTests {
+    @Test("초안 작성 · 수정 · PDF 생성 · 분석 대기를 서로 다른 이름으로 보인다 (사용자 보고: 모두 '진행 중'이라 헷갈림)")
+    func distinctLabels() {
+        let labels = [
+            DocumentWorkflow.progressLabel(.analyzing(requestID: "a")),
+            DocumentWorkflow.progressLabel(.drafting(requestID: "a")),
+            DocumentWorkflow.progressLabel(.commanding(requestID: "a")),
+            DocumentWorkflow.progressLabel(.generatingPDF(requestID: "a"))
+        ].compactMap { $0 }
+        #expect(labels == ["분석 뒤 초안 작성", "초안 작성 중", "수정 반영 중", "PDF 만드는 중"])
+        #expect(Set(labels + [DocumentWorkflow.analysisProgressLabel]).count == 5)
+        #expect(DocumentWorkflow.progressLabel(.reviewing) == nil)
+        #expect(DocumentWorkflow.progressLabel(.completed) == nil)
+    }
+}

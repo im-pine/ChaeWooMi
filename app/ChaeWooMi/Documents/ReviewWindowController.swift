@@ -24,11 +24,15 @@ final class ReviewWindowController {
         window.makeKeyAndOrderFront(nil)
     }
 
-    /// 상태가 바뀌면 세션이 고친 초안을 다시 불러오고, 끝났으면(완료 · 보관) 닫는다
+    /// 상태가 바뀌면 세션이 고친 초안을 다시 불러오고, 승인했거나(PDF 생성 · 완료) 보관했으면 닫는다.
+    /// 승인 뒤 진행은 카드에서 본다 (사용자 요청 2026-10-18)
     func refresh() {
         model.reloadIfChanged()
         guard let phase = controller?.workflow.phase else { return }
-        if phase == .archived || phase == .idle { window?.orderOut(nil) }
+        switch phase {
+        case .archived, .idle, .generatingPDF, .completed: window?.orderOut(nil)
+        default: break
+        }
     }
 
     private func makeWindow() -> NSWindow {

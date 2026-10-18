@@ -14,6 +14,7 @@ struct CompanyCard: View {
             CompanyHeader(company: company.isEmpty ? "회사 확인 필요" : company, source: source, expanded: $store.expanded)
             ReapplyBadge(lookup: lookup) { store.reloadVault(); store.handle(.recheck) }
             TaskIcons(state: store.taskState) { kind, action in handle(kind, action) }
+            progressLine
             if let notice = store.notice ?? store.documents?.notice {
                 Text(notice).font(.system(size: 10)).foregroundStyle(.secondary)
             }
@@ -23,6 +24,20 @@ struct CompanyCard: View {
         }
         .frame(width: CardTheme.cardWidth - 20, alignment: .leading)
         .cardBackground()
+    }
+
+    /// 진행 중인 작업과 단계 (`이력서 · PDF 만드는 중`). 아이콘만으로는 초안 작성 · PDF 생성이 똑같이 보였다
+    @ViewBuilder private var progressLine: some View {
+        let steps = TaskKind.allCases.compactMap { kind -> String? in
+            if case let .running(step) = store.taskState(kind) { return "\(kind.label) · \(step)" }
+            return nil
+        }
+        if let line = steps.last {
+            HStack(spacing: 4) {
+                ProgressView().controlSize(.mini)
+                Text(line).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+            }
+        }
     }
 
     /// 아이콘 클릭 분기 (APP-017): 시작 전 = 요청, 진행 중 = 진행 상세, 초안 있음 = 검토 모달, 완료 = 결과 상세(재요청 없음)
