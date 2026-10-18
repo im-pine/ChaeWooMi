@@ -16,7 +16,10 @@ struct FloatingRoot: View {
                 Button { store.collapsed = false } label: { LauncherView() }
                     .buttonStyle(.plain)
             } else if store.showsLauncherOnly {
-                HistoryCheckButton { store.checkHistory() }
+                HistoryCheckButton(
+                    checking: store.historyCheck.isChecking,
+                    note: store.historyCheck.label ?? store.historyNotice
+                ) { store.checkHistory() }
             } else {
                 card
             }

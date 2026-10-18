@@ -16,6 +16,10 @@ struct ManualCard: View {
                     .buttonStyle(.plain)
                     .help("닫기")
             }
+            // 다시 읽기 · 새로고침으로도 회사명을 못 찾았을 때 그 이유
+            if let notice = store.notice {
+                Text(notice).font(.system(size: 10)).foregroundStyle(.secondary)
+            }
             TextField("회사명", text: $name)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit(submit)

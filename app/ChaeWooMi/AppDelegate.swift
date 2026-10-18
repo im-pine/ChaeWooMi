@@ -19,7 +19,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cards.start()
         cards.documents = documents
         cards.records = records
-        cards.requestRescan = { [unowned self] in bridge.requestRescan() }
+        cards.requestRescan = { [unowned self] reload in bridge.requestRescan(reload: reload) }
+        cards.extensionVersion = { [unowned self] in bridge.connections.currentVersion }
+        bridge.onExtensionConnected = { [unowned self] version in cards.extensionConnected(version: version) }
         // 회신은 id로 제 요청만 받는다
         sessions.onReply = { [unowned self] reply in
             documents.received(reply)
@@ -70,7 +72,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .pageLeft: cards.handle(.pageLeft)
         case let .applyButton(covering): cards.applyButton(covering: covering)
         case let .applyComplete(page): records.detected(page)
-        case .hello, .notPosting: break  // notPosting은 다음 PR의 "지원 이력 확인" 단계에서 씀
+        case .notPosting: cards.notPosting()
+        case .hello: break
         }
     }
 
