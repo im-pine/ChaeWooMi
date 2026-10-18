@@ -73,6 +73,11 @@ export class TabPages {
     return this.left(tabId);
   }
 
+  /** 이 탭의 공고를 알고 있는가 */
+  has(tabId: number): boolean {
+    return this.pages.has(tabId);
+  }
+
   /** 저장할 상태 */
   state(): TabPagesState {
     return { pages: [...this.pages], active: this.active, latest: this.latest };

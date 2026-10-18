@@ -4,10 +4,12 @@ import type { ExtensionToApp } from '@/lib/protocol';
 import { RESCAN, type PageReport } from '@/lib/postingWatch';
 import { POSTING_SCRIPT_ID, splitByPermission } from '@/lib/registration';
 import { configProblems, DEFAULT_CONFIG, postingSite, type SiteConfig } from '@/lib/siteConfig';
+import { AUTO_RESCAN_DELAY_MS, AutoRescan } from '@/lib/autoRescan';
 import { TabPages, type TabPagesState } from '@/lib/tabPages';
 
 let state: ConnectionState = { kind: 'connecting' };
 let tabs = new TabPages();
+const autoRescan = new AutoRescan();
 /** `storage.session`에서 탭별 공고 기억을 다 읽었음 */
 let ready: Promise<void> = Promise.resolve();
 
@@ -40,13 +42,33 @@ async function rescanActiveTab(post: (message: ExtensionToApp) => void, reload: 
   }
   post(tabs.activate(tab.id));
   saveTabs();
+  await rereadTab(tab.id);
+}
+
+/** 그 탭의 콘텐츠 스크립트에 다시 읽기를 보내고, 응답이 없으면(끊긴 탭) 다시 넣는다 */
+async function rereadTab(tabId: number) {
   try {
-    await browser.tabs.sendMessage(tab.id, RESCAN);
+    await browser.tabs.sendMessage(tabId, RESCAN);
   } catch {
     await browser.scripting
-      .executeScript({ target: { tabId: tab.id }, files: ['/content-scripts/posting.js'] })
+      .executeScript({ target: { tabId }, files: ['/content-scripts/posting.js'] })
       .catch(() => undefined);
   }
+}
+
+/**
+ * 탭에 들어가거나 앱과 다시 연결되면, 잠시 뒤에도 그 탭(지정 사이트 공고)의 공고를 모를 때 자동으로 다시 읽는다.
+ * "지원 이력 확인"을 누르지 않아도 카드가 뜨게 (사용자 요청 2026-10-18)
+ */
+function autoRescanSoon(tabId: number) {
+  setTimeout(() => {
+    void (async () => {
+      const tab = await browser.tabs.get(tabId).catch(() => undefined);
+      if (!tab?.active || tab.status !== 'complete') return;
+      const isPosting = !!tab.url && postingSite(tab.url, await currentConfig()) !== null;
+      if (autoRescan.shouldTry(tabId, tab.url, isPosting, tabs.has(tabId))) await rereadTab(tabId);
+    })();
+  }, AUTO_RESCAN_DELAY_MS);
 }
 
 async function currentConfig(): Promise<SiteConfig> {
@@ -89,7 +111,11 @@ function createAppConnection() {
       void browser.storage.session.set({ connection: state });
       if (next.kind === 'connected') {
         quickRetried = false;
-        void ready.then(() => connection.post(tabs.current()));
+        void ready.then(async () => {
+          connection.post(tabs.current());
+          const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
+          if (tab?.id !== undefined) autoRescanSoon(tab.id);
+        });
       } else if (next.kind !== 'connecting' && !quickRetried) {
         // 끊기면 3초 뒤 한 번 조용히 다시 연결 (앱을 다시 켰거나 바꿔 설치한 경우). 그다음은 30초 알람
         quickRetried = true;
@@ -127,6 +153,7 @@ function listenTabs(post: (message: ExtensionToApp) => void) {
       void ready.then(() => {
         post(tabs.activate(tabId));
         saveTabs();
+        autoRescanSoon(tabId);
       }),
   );
   // 탭이 새 페이지를 불러오기 시작하면 이전 공고를 비운다. 등록 도메인 밖으로 가면 콘텐츠 스크립트가 없어 left를 못 보내기 때문
@@ -141,6 +168,7 @@ function listenTabs(post: (message: ExtensionToApp) => void) {
   browser.tabs.onRemoved.addListener(
     (tabId) =>
       void ready.then(() => {
+        autoRescan.forget(tabId);
         const message = tabs.closed(tabId);
         saveTabs();
         if (message) post(message);
