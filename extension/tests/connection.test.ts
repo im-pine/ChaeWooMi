@@ -30,6 +30,7 @@ function setup(lastError?: string) {
   const ports: ReturnType<typeof fakePort>[] = [];
   const states: ConnectionState[] = [];
   const configs: SiteConfig[] = [];
+  const rescans: boolean[] = [];
   const connection = createConnection({
     connectNative: (): NativePort => {
       const port = fakePort();
@@ -40,8 +41,9 @@ function setup(lastError?: string) {
     extensionVersion: '0.1.0',
     onState: (state) => states.push(state),
     onConfig: (config) => configs.push(config),
+    onRescan: () => rescans.push(true),
   });
-  return { connection, ports, states, configs };
+  return { connection, ports, states, configs, rescans };
 }
 
 describe('앱 연결 관리', () => {
@@ -110,5 +112,12 @@ describe('앱이 보낸 설정', () => {
     connection.connect();
     connection.post({ type: 'pageLeft' });
     expect(ports).toHaveLength(1);
+  });
+
+  it('앱이 rescan을 보내면 다시 읽기를 요청한다 ("지원 이력 확인" 버튼)', () => {
+    const { connection, ports, rescans } = setup();
+    connection.connect();
+    ports[0]?.receive({ type: 'rescan' });
+    expect(rescans).toEqual([true]);
   });
 });

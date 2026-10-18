@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import saramin from './fixtures/saramin.html?raw';
 import jobkorea from './fixtures/jobkorea.html?raw';
 import wanted from './fixtures/wanted.html?raw';
-import { applyButtons, CARD_ZONE, coversCardZone } from '@/lib/applyButton';
+import { applyButtons, CARD_ZONE, coversCardZone, isMainApplyButton } from '@/lib/applyButton';
 import { DEFAULT_CONFIG } from '@/lib/siteConfig';
 
 const parse = (html: string) => new DOMParser().parseFromString(html, 'text/html');
@@ -33,5 +33,17 @@ describe('지원 버튼과 카드 자리 (APP-015)', () => {
     const top = viewport.height - CARD_ZONE.height;
     expect(coversCardZone({ left: 0, top: 820, right: left, bottom: 870 }, viewport)).toBe(false);
     expect(coversCardZone({ left: 1300, top: 0, right: 1420, bottom: top }, viewport)).toBe(false);
+  });
+});
+
+describe('카드를 접게 하는 것은 그 공고의 큰 지원 버튼만 (실측 버그)', () => {
+  it('추천 목록의 작은 입사지원 버튼(약 53×22)은 카드 자리에 있어도 접지 않는다', () => {
+    const small = { left: 1300, top: 820, right: 1353, bottom: 842 };
+    expect(coversCardZone(small, viewport)).toBe(true);
+    expect(isMainApplyButton(small)).toBe(false);
+  });
+
+  it('공고 본문의 지원 버튼(185×60)은 그 공고의 지원 버튼으로 본다', () => {
+    expect(isMainApplyButton({ left: 792, top: 150, right: 977, bottom: 210 })).toBe(true);
   });
 });

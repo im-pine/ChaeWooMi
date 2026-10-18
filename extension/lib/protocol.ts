@@ -42,7 +42,10 @@ export type AckMessage = { type: 'ack'; appVersion: string };
 /** 앱 소유 지원 사이트 설정 (WEB-014) */
 export type SiteConfigMessage = { type: 'siteConfig'; config: SiteConfig };
 
-export type AppToExtension = AckMessage | SiteConfigMessage;
+/** 지금 보고 있는 탭을 다시 읽어 달라 (카드의 "지원 이력 확인" 버튼) */
+export type RescanMessage = { type: 'rescan' };
+
+export type AppToExtension = AckMessage | SiteConfigMessage | RescanMessage;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -95,5 +98,6 @@ export function isAppToExtension(value: unknown): value is AppToExtension {
   if (value.type === 'ack') return typeof value.appVersion === 'string';
   // 틀린 설정은 받지 않고 지금 설정을 그대로 쓴다
   if (value.type === 'siteConfig') return configProblems(value.config).length === 0;
+  if (value.type === 'rescan') return true;
   return false;
 }

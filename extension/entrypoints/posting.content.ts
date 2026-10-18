@@ -1,6 +1,7 @@
 import {
   applyButtonCovering,
   completeOnPage,
+  RESCAN,
   readPage,
   WAIT_FOR_COMPANY_MS,
   type PageReport,
@@ -91,6 +92,12 @@ export default defineContentScript({
     scan(config, ctx);
     watchApplyButton(config, ctx);
     watchCompletion(config, ctx);
+    // "지원 이력 확인" 버튼: 다시 읽고 응답한다 (응답이 없으면 background가 이 스크립트를 다시 넣는다)
+    browser.runtime.onMessage.addListener((message: unknown) => {
+      if (message !== RESCAN || ctx.isInvalid) return undefined;
+      scan(config, ctx);
+      return Promise.resolve(true);
+    });
     // SPA 주소 변경(원티드 등): 이전 회사 결과를 비우고 다시 읽는다 (WEB-015)
     ctx.addEventListener(window, 'wxt:locationchange', ({ newUrl, oldUrl }) => {
       // 해시만 바뀌면 같은 공고 (사람인 `#seq=0`) — 비우고 다시 읽지 않는다

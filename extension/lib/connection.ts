@@ -17,6 +17,8 @@ export type ConnectionDeps = {
   onState(state: ConnectionState): void;
   /** 앱이 보낸 지원 사이트 설정 */
   onConfig(config: SiteConfig): void;
+  /** 앱이 지금 탭을 다시 읽어 달라고 함 */
+  onRescan(): void;
 };
 
 /**
@@ -35,7 +37,8 @@ export function createConnection(deps: ConnectionDeps) {
       if (port !== current || !isAppToExtension(message)) return;
       if (message.type === 'ack')
         deps.onState({ kind: 'connected', appVersion: message.appVersion });
-      else deps.onConfig(message.config);
+      else if (message.type === 'siteConfig') deps.onConfig(message.config);
+      else deps.onRescan();
     });
     port.onDisconnect.addListener(() => {
       if (port !== current) return;

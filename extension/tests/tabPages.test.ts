@@ -93,3 +93,19 @@ describe('등록 도메인 밖으로 이동', () => {
     expect(sameDocument(base, 'not a url')).toBe(false);
   });
 });
+
+describe('service worker 재시작에도 탭별 공고를 잃지 않는다 (백그라운드 탭 실측 버그)', () => {
+  it('저장한 상태로 되살리면 이전에 연 뒤 탭으로 옮길 때 그 공고를 보낸다', () => {
+    const before = new TabPages();
+    before.activate(1);
+    before.posting(2, page('가상전자'));
+    before.posting(3, page('가상물산'));
+    const restored = TabPages.restore(JSON.parse(JSON.stringify(before.state())));
+    expect(restored.activate(3)).toEqual(page('가상물산'));
+    expect(restored.complete()?.companies).toEqual(['가상물산']);
+  });
+
+  it('저장한 상태가 없으면 빈 상태', () => {
+    expect(TabPages.restore(undefined).current()).toEqual({ type: 'pageLeft' });
+  });
+});
