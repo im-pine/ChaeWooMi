@@ -70,7 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .pageLeft: cards.handle(.pageLeft)
         case let .applyButton(covering): cards.applyButton(covering: covering)
         case let .applyComplete(page): records.detected(page)
-        case .hello: break
+        case .hello, .notPosting: break  // notPosting은 다음 PR의 "지원 이력 확인" 단계에서 씀
         }
     }
 

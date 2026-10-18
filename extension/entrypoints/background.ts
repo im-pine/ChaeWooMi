@@ -3,13 +3,18 @@ import type { ConnectionState } from '@/lib/native';
 import type { ExtensionToApp } from '@/lib/protocol';
 import { RESCAN, type PageReport } from '@/lib/postingWatch';
 import { POSTING_SCRIPT_ID, splitByPermission } from '@/lib/registration';
-import { configProblems, DEFAULT_CONFIG, type SiteConfig } from '@/lib/siteConfig';
+import { configProblems, DEFAULT_CONFIG, postingSite, type SiteConfig } from '@/lib/siteConfig';
 import { TabPages, type TabPagesState } from '@/lib/tabPages';
 
 let state: ConnectionState = { kind: 'connecting' };
 let tabs = new TabPages();
 /** `storage.session`에서 탭별 공고 기억을 다 읽었음 */
 let ready: Promise<void> = Promise.resolve();
+
+/** 끊긴 뒤 첫 조용한 재연결까지 (그다음은 `RECONNECT_ALARM` 30초 주기) */
+const QUICK_RETRY_MS = 3000;
+const RECONNECT_ALARM = 'chaewoomi-reconnect';
+let quickRetried = false;
 
 /** 탭별 공고 기억을 저장한다. service worker가 쉬다 다시 시작되면 메모리가 비어 이전에 연 탭의 카드를 잃었다 */
 const saveTabs = () =>
@@ -20,9 +25,19 @@ const saveTabs = () =>
  * 콘텐츠 스크립트가 응답하지 않으면(확장을 새로고침하기 전에 연 탭 등) 그 탭에 다시 넣는다.
  * 권한이 없는 사이트면 아무것도 하지 않는다 → 앱이 수동 조회 카드를 연다
  */
-async function rescanActiveTab(post: (message: ExtensionToApp) => void) {
+async function rescanActiveTab(post: (message: ExtensionToApp) => void, reload: boolean) {
   const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
   if (tab?.id === undefined) return;
+  // 지정 사이트 공고 주소가 아니면 다시 읽기 · 새로고침이 소용없다 → 앱이 바로 직접 입력으로
+  if (!tab.url || !postingSite(tab.url, await currentConfig())) {
+    post({ type: 'notPosting' });
+    return;
+  }
+  // 다시 읽어도 회사명이 없으면 앱이 새로고침을 요청한다
+  if (reload) {
+    await browser.tabs.reload(tab.id);
+    return;
+  }
   post(tabs.activate(tab.id));
   saveTabs();
   try {
@@ -72,12 +87,21 @@ function createAppConnection() {
     onState: (next) => {
       state = next;
       void browser.storage.session.set({ connection: state });
-      if (next.kind === 'connected') void ready.then(() => connection.post(tabs.current()));
+      if (next.kind === 'connected') {
+        quickRetried = false;
+        void ready.then(() => connection.post(tabs.current()));
+      } else if (next.kind !== 'connecting' && !quickRetried) {
+        // 끊기면 3초 뒤 한 번 조용히 다시 연결 (앱을 다시 켰거나 바꿔 설치한 경우). 그다음은 30초 알람
+        quickRetried = true;
+        setTimeout(() => {
+          if (!connection.isConnected()) connection.connect(true);
+        }, QUICK_RETRY_MS);
+      }
     },
     // 앱 소유 지원 사이트 설정. 공고 인식은 이 값을 쓰고, 없으면 기본값 (WEB-014)
     onConfig: (config) =>
       void browser.storage.local.set({ siteConfig: config }).then(registerPostingScript),
-    onRescan: () => void ready.then(() => rescanActiveTab(connection.post)),
+    onRescan: (reload) => void ready.then(() => rescanActiveTab(connection.post, reload)),
   });
   return connection;
 }
@@ -142,6 +166,11 @@ export default defineBackground(() => {
       saveTabs();
     });
   listenTabs(connection.post);
+  // 앱이 꺼졌다 켜져도 사용자가 탭을 옮기기 전에 다시 이어지도록 30초마다 조용히 다시 연결 (꺼진 앱은 실행하지 않음)
+  void browser.alarms.create(RECONNECT_ALARM, { periodInMinutes: 0.5 });
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === RECONNECT_ALARM && !connection.isConnected()) connection.connect(true);
+  });
   browser.permissions.onAdded.addListener(() => void registerPostingScript());
   browser.permissions.onRemoved.addListener(() => void registerPostingScript());
   browser.runtime.onMessage.addListener((message: unknown, sender) => {

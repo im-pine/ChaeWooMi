@@ -92,14 +92,14 @@ final class BrowserBridge {
             greeted[id] = connection
             try? connection.send(AppToExtension.ack(appVersion: Self.appVersion))
             try? connection.send(AppToExtension.siteConfig(siteConfig.config))
-        case .jobPage, .pageLeft, .applyButton, .applyComplete:
+        case .jobPage, .pageLeft, .applyButton, .applyComplete, .notPosting:
             onPage?(message)
         }
     }
 
     /// 열린 확장에 지금 탭을 다시 읽어 달라고 보낸다 ("지원 이력 확인" 버튼). 보낸 연결이 없으면 false
     func requestRescan() -> Bool {
-        let sent = greeted.values.filter { (try? $0.send(AppToExtension.rescan)) != nil }
+        let sent = greeted.values.filter { (try? $0.send(AppToExtension.rescan(reload: false))) != nil }
         return !sent.isEmpty
     }
 

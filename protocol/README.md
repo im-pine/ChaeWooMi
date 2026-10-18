@@ -5,12 +5,14 @@ TypeScript(`extension/lib/protocol.ts`)와 Swift(`app/Core`) 테스트가 **같�
 
 | 파일 | 방향 | 뜻 |
 | --- | --- | --- |
-| `examples/hello.json` | 확장 → 앱 | 연결 직후 인사 (확장 버전) |
+| `examples/hello.json` | 확장 → 앱 | 연결 직후 인사 (확장 버전). 확장이 스스로 다시 연결할 때는 `"quiet": true` → 호스트가 꺼진 앱을 실행하지 않는다 |
 | `examples/job-page.json` | 확장 → 앱 | 지정 사이트 공고: 회사명 후보(구조화 데이터 → 메타 → DOM 순, 비면 추출 실패) · 제목 · 공고 원문(없으면 필드 없음). 민감 정보를 걸러 낸 뒤 |
 | `examples/page-left.json` | 확장 → 앱 | 공고가 아닌 페이지 · 다른 탭으로 옮김 (이전 회사 결과 지우기) |
 | `examples/apply-button.json` | 확장 → 앱 | 지원 버튼이 화면 오른쪽 아래 카드 자리를 가리는지 (바뀔 때만) |
 | `examples/apply-complete.json` | 확장 → 앱 | 지원 완료 화면 감지 (HIS-017): 가장 최근 공고의 사이트 · 주소 · 회사명 후보 · 제목. 앱이 5초 카운트다운 뒤 기록을 요청한다 |
 | `examples/rescan.json` | 앱 → 확장 | 지금 보고 있는 탭을 다시 읽어 달라 (카드의 "지원 이력 확인" 버튼). 콘텐츠 스크립트가 응답하지 않으면 확장이 그 탭에 다시 넣는다 |
+| `examples/rescan-reload.json` | 앱 → 확장 | 다시 읽어도 회사명이 없을 때 지금 탭을 새로고침 (지정 사이트 탭만) |
+| `examples/not-posting.json` | 확장 → 앱 | 다시 읽기 요청을 받았지만 지금 탭이 지정 사이트 공고 주소가 아님 → 앱은 새로고침을 건너뛰고 직접 입력으로 |
 | `examples/ack.json` | 앱 → 확장 | 인사 응답 (앱 버전) |
 | `sites.default.json` | 앱 → 확장 (`{"type":"siteConfig","config":…}`) | 지원 사이트 설정 기본값 (WEB-014). 앱은 `~/Library/Application Support/ChaeWooMi/sites.json`을 쓰고, 없으면 이 값으로 만든다 |
 
