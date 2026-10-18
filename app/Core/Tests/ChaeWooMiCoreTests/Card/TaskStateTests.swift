@@ -110,7 +110,7 @@ struct TaskStateTests {
     func overlay() {
         let empty = CompanyFolders(companyFolders: [], outputFolders: [])
         func state(
-            running: Set<TaskKind> = [],
+            running: [TaskKind: String] = [:],
             failures: [TaskKind: String] = [:],
             reason: String? = nil
         ) -> TaskState {
@@ -118,8 +118,8 @@ struct TaskStateTests {
                 .resume, folders: empty, running: running, failures: failures, unavailableReason: reason
             )
         }
-        #expect(state(running: [.resume], reason: "회사 미확정") == .unavailable("회사 미확정"))
-        #expect(state(running: [.resume], failures: [.resume: "x"]) == .running)
+        #expect(state(running: [.resume: "초안 작성 중"], reason: "회사 미확정") == .unavailable("회사 미확정"))
+        #expect(state(running: [.resume: "PDF 만드는 중"], failures: [.resume: "x"]) == .running("PDF 만드는 중"))
         #expect(state(failures: [.resume: "세션 응답 없음"]) == .failed("세션 응답 없음"))
         #expect(state() == .ready)
     }
@@ -127,11 +127,11 @@ struct TaskStateTests {
     @Test("완료 · 진행 중 아이콘을 다시 눌러도 새 작업을 만들지 않는다 (QA-006 · QA-007)")
     func clickRouting() {
         #expect(TaskAction.onClick(.completed) == .showResult)
-        #expect(TaskAction.onClick(.running) == .showProgress)
+        #expect(TaskAction.onClick(.running("초안 작성 중")) == .showProgress)
         #expect(TaskAction.onClick(.waitingReview) == .openReview)
         #expect(TaskAction.onClick(.failed("x")) == .showFailure("x"))
         #expect(TaskAction.onClick(.unavailable("세션 꺼짐")) == .explain("세션 꺼짐"))
-        let states: [TaskState] = [.running, .waitingReview, .completed, .failed("x"), .unavailable("y")]
+        let states: [TaskState] = [.running("초안 작성 중"), .waitingReview, .completed, .failed("x"), .unavailable("y")]
         #expect(states.filter { TaskAction.onClick($0).startsWork }.isEmpty)
         #expect(TaskAction.onClick(.ready).startsWork)
     }

@@ -142,7 +142,7 @@ final class CardStore {
         return TaskStateRule.state(
             kind,
             folders: company.flatMap(folders(for:)),
-            running: documents?.running ?? [],
+            running: documents?.running ?? [:],
             failures: documents?.failures ?? [:],
             unavailableReason: unavailableReason(kind, company: company)
         )

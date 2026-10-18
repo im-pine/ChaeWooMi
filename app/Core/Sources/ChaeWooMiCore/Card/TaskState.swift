@@ -24,7 +24,8 @@ public enum TaskKind: String, CaseIterable, Sendable {
 
 public enum TaskState: Equatable, Sendable {
     case ready
-    case running
+    /// 지금 단계 (`초안 작성 중` · `PDF 만드는 중` 등). 진행 중이 모두 같아 보여 헷갈리던 것을 구분한다
+    case running(String)
     /// (문서) 초안 md는 있고 PDF가 없거나 md가 더 최신
     case waitingReview
     case completed
@@ -34,7 +35,7 @@ public enum TaskState: Equatable, Sendable {
     public var label: String {
         switch self {
         case .ready: "시작 전"
-        case .running: "진행 중"
+        case let .running(step): step
         case .waitingReview: "초안 있음"
         case .completed: "완료"
         case .failed: "실패"
@@ -77,12 +78,12 @@ public enum TaskStateRule {
     public static func state(
         _ kind: TaskKind,
         folders: CompanyFolders?,
-        running: Set<TaskKind>,
+        running: [TaskKind: String],
         failures: [TaskKind: String],
         unavailableReason: String?
     ) -> TaskState {
         if let unavailableReason { return .unavailable(unavailableReason) }
-        if running.contains(kind) { return .running }
+        if let step = running[kind] { return .running(step) }
         if let failure = failures[kind] { return .failed(failure) }
         guard let folders else { return .ready }
         return fileState(kind, folders: folders)

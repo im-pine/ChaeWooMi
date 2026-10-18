@@ -21,6 +21,20 @@ extension DocumentWorkflow {
         case archived
     }
 
+    /// 진행 중인 단계 이름 (카드 아이콘 · 상태 줄). 진행 중이 아니면 nil
+    public static func progressLabel(_ phase: Phase) -> String? {
+        switch phase {
+        case .analyzing: "분석 뒤 초안 작성"
+        case .drafting: "초안 작성 중"
+        case .commanding: "수정 반영 중"
+        case .generatingPDF: "PDF 만드는 중"
+        default: nil
+        }
+    }
+
+    /// 공고 분석 아이콘의 진행 중 이름
+    public static let analysisProgressLabel = "공고 분석 중"
+
     public struct Failure: Equatable, Sendable {
         public let step: Step
         public let reason: String

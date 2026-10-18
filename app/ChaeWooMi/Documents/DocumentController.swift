@@ -1,3 +1,4 @@
+import AppKit
 import ChaeWooMiCore
 import Foundation
 import Observation
@@ -106,15 +107,14 @@ final class DocumentController {
     // MARK: - 아이콘 상태
 
     /// 진행 중인 아이콘 (APP-012 덮어쓰기)
-    var running: Set<TaskKind> {
-        var kinds: Set<TaskKind> = analysis.requestID == nil ? [] : [.analysis]
-        guard let job = activeJob else { return kinds }
-        switch workflow.phase {
-        case .analyzing: kinds.formUnion([.analysis, taskKind(job.kind)])
-        case .drafting, .commanding, .generatingPDF: kinds.insert(taskKind(job.kind))
-        default: break
-        }
-        return kinds
+    /// 진행 중인 아이콘과 그 단계 이름 (초안 작성 중 · PDF 만드는 중 등을 구분)
+    var running: [TaskKind: String] {
+        let analyzing = DocumentWorkflow.analysisProgressLabel
+        var steps: [TaskKind: String] = analysis.requestID == nil ? [:] : [.analysis: analyzing]
+        guard let job = activeJob, let step = DocumentWorkflow.progressLabel(workflow.phase) else { return steps }
+        if case .analyzing = workflow.phase { steps[.analysis] = analyzing }
+        steps[taskKind(job.kind)] = step
+        return steps
     }
 
     var failures: [TaskKind: String] {
@@ -135,6 +135,8 @@ final class DocumentController {
     // MARK: - 내부
 
     private func run(workflow event: DocumentWorkflow.Event) {
+        let before = workflow.phase
+        defer { openPDFIfFinished(after: before) }
         for effect in workflow.handle(event) {
             switch effect {
             case let .send(request, id): send(request, id: id)
@@ -144,6 +146,13 @@ final class DocumentController {
             }
         }
         reviewWindow.refresh()
+    }
+
+    /// PDF 생성 단계에서 완료로 바뀌면 그 PDF를 연다 (사용자 요청 2026-10-18)
+    private func openPDFIfFinished(after before: DocumentWorkflow.Phase) {
+        guard case .generatingPDF = before, workflow.phase == .completed,
+              let pdf = workflow.snapshot?.pdf else { return }
+        NSWorkspace.shared.open(pdf)
     }
 
     private func send(_ request: SessionRequest, id: String) {
