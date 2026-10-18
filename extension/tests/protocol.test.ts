@@ -7,6 +7,7 @@ import ack from '../../protocol/examples/ack.json';
 import pageLeft from '../../protocol/examples/page-left.json';
 import applyButton from '../../protocol/examples/apply-button.json';
 import applyComplete from '../../protocol/examples/apply-complete.json';
+import rescan from '../../protocol/examples/rescan.json';
 
 describe('확장 ↔ 앱 메시지 규약 (공용 예시)', () => {
   it('확장 → 앱 예시는 모두 규약에 맞다', () => {
@@ -23,6 +24,7 @@ describe('확장 ↔ 앱 메시지 규약 (공용 예시)', () => {
 
   it('앱 → 확장 예시는 규약에 맞다', () => {
     expect(isAppToExtension(ack)).toBe(true);
+    expect(isAppToExtension(rescan)).toBe(true);
   });
 
   it('필수 필드가 빠지거나 모르는 type이면 거부한다', () => {

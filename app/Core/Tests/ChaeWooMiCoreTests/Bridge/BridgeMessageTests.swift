@@ -45,6 +45,15 @@ struct BridgeMessageTests {
         #expect(mine == expected)
     }
 
+    @Test("다시 읽기 요청은 예시와 같은 JSON이다")
+    func encodesRescanLikeExample() throws {
+        let encoded = try JSONEncoder().encode(AppToExtension.rescan)
+        let mine = try JSONSerialization.jsonObject(with: encoded) as? NSDictionary
+        let expected = try JSONSerialization.jsonObject(with: example("rescan.json")) as? NSDictionary
+        #expect(mine == expected)
+        #expect(try JSONDecoder().decode(AppToExtension.self, from: example("rescan.json")) == .rescan)
+    }
+
     @Test("모르는 type · 필수 필드 없음은 해석하지 않는다")
     func rejectsInvalid() {
         let decoder = JSONDecoder()

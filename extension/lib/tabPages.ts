@@ -22,6 +22,13 @@ export function sameDocument(a: string, b: string): boolean {
   }
 }
 
+/** service worker가 다시 시작돼도 이어 쓰도록 `storage.session`에 두는 모양 */
+export type TabPagesState = {
+  pages: [number, JobPageMessage][];
+  active: number | null;
+  latest: JobPageMessage | null;
+};
+
 export class TabPages {
   private pages = new Map<number, JobPageMessage>();
   private active: number | null = null;
@@ -64,6 +71,21 @@ export class TabPages {
     const page = this.pages.get(tabId);
     if (page && url && sameDocument(page.url, url)) return null;
     return this.left(tabId);
+  }
+
+  /** 저장할 상태 */
+  state(): TabPagesState {
+    return { pages: [...this.pages], active: this.active, latest: this.latest };
+  }
+
+  /** 저장해 둔 상태로 되살린다 (service worker 재시작) */
+  static restore(state: TabPagesState | undefined): TabPages {
+    const tabs = new TabPages();
+    if (!state) return tabs;
+    tabs.pages = new Map(state.pages);
+    tabs.active = state.active;
+    tabs.latest = state.latest;
+    return tabs;
   }
 
   /** 지원 완료 화면 감지 (HIS-017). 본 공고가 없으면 보내지 않는다 (회사를 모름) */

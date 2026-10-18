@@ -12,6 +12,9 @@ export type PageRead = { kind: 'posting'; page: JobPageMessage } | { kind: 'left
 export type PageReport =
   PageRead | { kind: 'applyButton'; covering: boolean } | { kind: 'complete' };
 
+/** background → 콘텐츠 스크립트: 지금 페이지를 다시 읽어라 (카드의 "지원 이력 확인" 버튼) */
+export const RESCAN = 'chaewoomi-rescan';
+
 /** 회사명이 나타날 때까지 기다리는 최대 시간 (사람인은 본문을 나중에 불러옴) */
 export const WAIT_FOR_COMPANY_MS = 5000;
 

@@ -10,6 +10,7 @@ TypeScript(`extension/lib/protocol.ts`)와 Swift(`app/Core`) 테스트가 **같�
 | `examples/page-left.json` | 확장 → 앱 | 공고가 아닌 페이지 · 다른 탭으로 옮김 (이전 회사 결과 지우기) |
 | `examples/apply-button.json` | 확장 → 앱 | 지원 버튼이 화면 오른쪽 아래 카드 자리를 가리는지 (바뀔 때만) |
 | `examples/apply-complete.json` | 확장 → 앱 | 지원 완료 화면 감지 (HIS-017): 가장 최근 공고의 사이트 · 주소 · 회사명 후보 · 제목. 앱이 5초 카운트다운 뒤 기록을 요청한다 |
+| `examples/rescan.json` | 앱 → 확장 | 지금 보고 있는 탭을 다시 읽어 달라 (카드의 "지원 이력 확인" 버튼). 콘텐츠 스크립트가 응답하지 않으면 확장이 그 탭에 다시 넣는다 |
 | `examples/ack.json` | 앱 → 확장 | 인사 응답 (앱 버전) |
 | `sites.default.json` | 앱 → 확장 (`{"type":"siteConfig","config":…}`) | 지원 사이트 설정 기본값 (WEB-014). 앱은 `~/Library/Application Support/ChaeWooMi/sites.json`을 쓰고, 없으면 이 값으로 만든다 |
 
