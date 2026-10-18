@@ -24,6 +24,13 @@ final class ReviewWindowController {
         window.makeKeyAndOrderFront(nil)
     }
 
+    /// 닫았거나 가려진 모달을 다시 앞으로 (같은 초안 작업이 이어지는 중일 때)
+    func reshow() {
+        guard let window else { return }
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
+
     /// 상태가 바뀌면 세션이 고친 초안을 다시 불러오고, 승인했거나(PDF 생성 · 완료) 보관했으면 닫는다.
     /// 승인 뒤 진행은 카드에서 본다 (사용자 요청 2026-10-18)
     func refresh() {
@@ -46,6 +53,8 @@ final class ReviewWindowController {
         window.contentViewController = host
         window.setContentSize(Self.contentSize)
         window.isReleasedWhenClosed = false
+        // 다른 앱(공고를 보던 Chrome 등)으로 넘어가도 숨기지 않는다 (NSPanel 기본값은 숨김)
+        window.hidesOnDeactivate = false
         window.center()
         return window
     }

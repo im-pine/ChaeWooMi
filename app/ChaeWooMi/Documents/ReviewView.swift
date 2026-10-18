@@ -68,6 +68,7 @@ private struct CommandPane: View {
     let controller: DocumentController
     let model: ReviewModel
     @State private var input = ""
+    @FocusState private var inputFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -83,11 +84,19 @@ private struct CommandPane: View {
                 TextField("수정할 내용을 입력하세요", text: $input, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...4)
-                    .onSubmit(send)
-                Button("전송", action: send).disabled(!canSend)
+                    .focused($inputFocused)
+                    // Enter는 언제나 전송 — 키를 여기서 소비해 승인 등 다른 곳으로 가지 않는다 (사용자 보고).
+                    // Shift+Enter도 전송: 한글 조합 중에는 입력기가 조합을 마치며 Enter를 넘겨 줄바꿈과 구분되지 않았다 (실측)
+                    .onKeyPress(.return, phases: .down) { _ in
+                        send()
+                        return .handled
+                    }
+                Button("전송", action: send).disabled(!canSend).focusable(false)
             }
         }
         .padding(16)
+        // 모달을 열면 바로 입력칸에
+        .onAppear { inputFocused = true }
     }
 
     /// 처리 중에는 보내지 않는다 (DOC-027)
@@ -100,6 +109,7 @@ private struct CommandPane: View {
         controller.command(input, userEdited: model.userEdited)
         model.markSent()
         input = ""
+        inputFocused = true
     }
 }
 
@@ -171,6 +181,8 @@ private struct ReviewFooter: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // 키보드 포커스를 받지 않아 Enter · Space로 눌리지 않는다 (승인은 클릭으로만)
+        .focusable(false)
         .foregroundStyle(prominent ? Color.white : Color.primary)
         .background(
             RoundedRectangle(cornerRadius: 8).fill(prominent ? CardTheme.primary : Color.secondary.opacity(0.12))

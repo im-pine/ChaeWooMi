@@ -55,7 +55,14 @@ final class DocumentController {
         guard let input = documentInput(kind, questions: []), let layout = cards.loaded?.layout else { return }
         let job = DocumentJob(company: input.company, kind: kind)
         Task {
-            guard await lock.acquire(job) == .granted else { return }
+            switch await lock.acquire(job) {
+            case .granted: break
+            case .alreadyRunning:
+                // 모달을 닫았거나 다른 앱으로 가려진 뒤 다시 누름 → 이어지던 검토 모달을 다시 앞으로
+                if workflow.phase == .reviewing { reviewWindow.reshow() }
+                return
+            case .busy: return
+            }
             activeJob = job
             workflow = DocumentWorkflow()
             run(workflow: .reopen(input, DocumentSnapshot.read(kind, company: input.company, layout: layout)))
