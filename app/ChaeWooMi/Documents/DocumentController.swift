@@ -149,8 +149,9 @@ final class DocumentController {
 
     /// PDF 생성 단계에서 완료로 바뀌면 그 PDF를 연다 (사용자 요청 2026-10-18)
     private func openPDFIfFinished(after before: DocumentWorkflow.Phase) {
-        guard case .generatingPDF = before, workflow.phase == .completed,
-              let pdf = workflow.snapshot?.pdf else { return }
+        guard DocumentWorkflow.finishedPDF(from: before, to: workflow.phase), let pdf = workflow.snapshot?.pdf else {
+            return
+        }
         NSWorkspace.shared.open(pdf)
     }
 

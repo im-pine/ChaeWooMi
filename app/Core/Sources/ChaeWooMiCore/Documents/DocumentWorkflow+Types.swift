@@ -32,6 +32,20 @@ extension DocumentWorkflow {
         }
     }
 
+    /// 검토 모달을 닫을 단계: 승인해 PDF를 만드는 중 · 완료 · 보관 · 취소 (승인 뒤 진행은 카드에서 본다)
+    public static func closesReview(_ phase: Phase) -> Bool {
+        switch phase {
+        case .archived, .idle, .generatingPDF, .completed: true
+        default: false
+        }
+    }
+
+    /// PDF 생성 단계에서 완료로 바뀌었는가 → 완성된 PDF를 연다
+    public static func finishedPDF(from before: Phase, to after: Phase) -> Bool {
+        if case .generatingPDF = before, after == .completed { return true }
+        return false
+    }
+
     /// 공고 분석 아이콘의 진행 중 이름
     public static let analysisProgressLabel = "공고 분석 중"
 

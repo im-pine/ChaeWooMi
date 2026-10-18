@@ -29,10 +29,7 @@ final class ReviewWindowController {
     func refresh() {
         model.reloadIfChanged()
         guard let phase = controller?.workflow.phase else { return }
-        switch phase {
-        case .archived, .idle, .generatingPDF, .completed: window?.orderOut(nil)
-        default: break
-        }
+        if DocumentWorkflow.closesReview(phase) { window?.orderOut(nil) }
     }
 
     private func makeWindow() -> NSWindow {

@@ -252,4 +252,24 @@ struct ProgressLabelTests {
         #expect(DocumentWorkflow.progressLabel(.reviewing) == nil)
         #expect(DocumentWorkflow.progressLabel(.completed) == nil)
     }
+
+    @Test("승인(PDF 생성) · 완료 · 보관 · 취소면 검토 모달을 닫고, 검토 · 수정 중에는 둔다")
+    func closesReview() {
+        #expect(DocumentWorkflow.closesReview(.generatingPDF(requestID: "a")))
+        #expect(DocumentWorkflow.closesReview(.completed))
+        #expect(DocumentWorkflow.closesReview(.archived))
+        #expect(DocumentWorkflow.closesReview(.idle))
+        #expect(!DocumentWorkflow.closesReview(.reviewing))
+        #expect(!DocumentWorkflow.closesReview(.commanding(requestID: "a")))
+    }
+
+    @Test("PDF 생성 → 완료로 바뀔 때만 PDF를 연다 (완료 아이콘 다시 열기 · 실패에서는 열지 않음)")
+    func finishedPDF() {
+        let pdf = DocumentWorkflow.Phase.generatingPDF(requestID: "a")
+        #expect(DocumentWorkflow.finishedPDF(from: pdf, to: .completed))
+        #expect(!DocumentWorkflow.finishedPDF(from: .completed, to: .completed))
+        #expect(!DocumentWorkflow.finishedPDF(from: .reviewing, to: .completed))
+        let failure = DocumentWorkflow.Failure(step: .pdf, reason: "x", missing: [])
+        #expect(!DocumentWorkflow.finishedPDF(from: pdf, to: .failed(failure)))
+    }
 }
