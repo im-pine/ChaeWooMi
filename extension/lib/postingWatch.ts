@@ -1,4 +1,4 @@
-import { applyButtons, coversCardZone } from './applyButton';
+import { applyButtons, coversCardZone, isMainApplyButton } from './applyButton';
 import { isCompletePage } from './completion';
 import { extractPosting } from './extract';
 import type { JobPageMessage } from './protocol';
@@ -46,9 +46,10 @@ export function applyButtonCovering(
 ) {
   const site = postingSite(url, config);
   if (!site) return false;
-  return applyButtons(doc, site).some((button) =>
-    coversCardZone(button.getBoundingClientRect(), viewport),
-  );
+  return applyButtons(doc, site).some((button) => {
+    const rect = button.getBoundingClientRect();
+    return isMainApplyButton(rect) && coversCardZone(rect, viewport);
+  });
 }
 
 /** 설정 사이트의 지원 완료 화면인가 (HIS-017). 공고 주소가 아니어도 도메인이 맞으면 본다 */
