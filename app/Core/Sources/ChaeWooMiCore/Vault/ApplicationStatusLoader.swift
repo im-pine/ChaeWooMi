@@ -15,6 +15,18 @@ public enum ApplicationStatusLoader {
         public let result: ApplicationStatusParser.Result
     }
 
+    /// 설정에 적은 위치로 읽는다 (항목별 경로, 2026-10-18)
+    public static func load(paths: VaultPaths) throws(LoadError) -> Loaded {
+        let layout = paths.layout
+        guard FileManager.default.fileExists(atPath: layout.statusFile.path) else { throw .statusFileNotFound }
+        guard let markdown = try? String(contentsOf: layout.statusFile, encoding: .utf8) else { throw .unreadable }
+        do {
+            return Loaded(layout: layout, result: try ApplicationStatusParser.parse(markdown))
+        } catch {
+            throw .noStatusTable
+        }
+    }
+
     public static func load(vault root: URL) throws(LoadError) -> Loaded {
         let layout: VaultLayout
         do {

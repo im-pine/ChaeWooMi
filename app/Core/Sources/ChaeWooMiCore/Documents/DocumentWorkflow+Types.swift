@@ -47,11 +47,17 @@ extension DocumentWorkflow {
         public let postingText: String?
         /// 자소서 문항 (이력서는 비어 있음)
         public let questions: [CoverLetterQuestion]
+        /// 설정의 저장 규칙으로 정한 공고 분석 · 초안 경로 (`VaultPaths`). 요청에 `저장 경로:`로 넣는다
+        public let postingPath: String?
+        public let draftPath: String?
 
         public init(
             kind: DocumentKind, company: String, platform: String, url: String,
-            postingText: String?, questions: [CoverLetterQuestion] = []
+            postingText: String?, questions: [CoverLetterQuestion] = [],
+            postingPath: String? = nil, draftPath: String? = nil
         ) {
+            self.postingPath = postingPath
+            self.draftPath = draftPath
             self.kind = kind
             self.company = company
             self.platform = platform

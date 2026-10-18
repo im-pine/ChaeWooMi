@@ -150,7 +150,7 @@ public struct DocumentWorkflow: Equatable, Sendable {
         phase = .analyzing(requestID: id)
         let request = SessionRequest.analysis(
             company: input.company, platform: input.platform, url: input.url,
-            postingText: input.postingText, supplement: supplement
+            postingText: input.postingText, supplement: supplement, savePath: input.postingPath
         )
         return [.send(request, id: id)]
     }
@@ -162,10 +162,13 @@ public struct DocumentWorkflow: Equatable, Sendable {
         phase = .drafting(requestID: id)
         let request: SessionRequest = switch input.kind {
         case .resume:
-            .resumeDraft(company: input.company, url: input.url, postingText: input.postingText)
+            .resumeDraft(
+                company: input.company, url: input.url, postingText: input.postingText, savePath: input.draftPath
+            )
         case .coverLetter:
             .coverLetterDraft(
-                company: input.company, url: input.url, postingText: input.postingText, questions: input.questions
+                company: input.company, url: input.url, postingText: input.postingText, questions: input.questions,
+                savePath: input.draftPath
             )
         }
         return [.send(request, id: id)]
