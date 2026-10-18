@@ -46,14 +46,25 @@ struct VaultPathsTests {
         #expect(FileManager.default.fileExists(atPath: reused.deletingLastPathComponent().path))
     }
 
-    @Test("초안: {산출물 폴더}/{기업명} {연도}/{이름}_이력서_{기업명}.md, 있으면 가장 최근 연도 폴더")
+    @Test("초안: {산출물 폴더}/{기업명} {올해}/{이름}_이력서_{기업명}.md, 올해 폴더만 다시 쓰고 지난해 폴더는 덮어쓰지 않는다")
     func draftFile() throws {
         let fixture = try SplitVault()
         defer { withExtendedLifetime(fixture) {} }
         let fresh = try #require(fixture.paths.draftFile(.resume, company: "가상전자(주)", year: 2026))
         #expect(fresh.path.hasSuffix("/11.0.0 Output/가상전자 2026/테스터_이력서_가상전자.md"))
-        let existing = try #require(fixture.paths.draftFile(.coverLetter, company: "가상물산(주)", year: 2027))
-        #expect(existing.path.hasSuffix("/11.0.0 Output/가상물산 2026/테스터_자기소개서_가상물산.md"))
+        let thisYear = try #require(fixture.paths.draftFile(.coverLetter, company: "가상물산(주)", year: 2026))
+        #expect(thisYear.path.hasSuffix("/11.0.0 Output/가상물산 2026/테스터_자기소개서_가상물산.md"))
+        let nextYear = try #require(fixture.paths.draftFile(.coverLetter, company: "가상물산(주)", year: 2027))
+        #expect(nextYear.path.hasSuffix("/11.0.0 Output/가상물산 2027/테스터_자기소개서_가상물산.md"))
+    }
+
+    @Test("지난 공고가 12.2 Archive에만 있어도 새 분석은 12.1 Active에 쓴다")
+    func postingIgnoresArchive() throws {
+        let fixture = try SplitVault()
+        defer { withExtendedLifetime(fixture) {} }
+        try fixture.vault.write("12 JobOpening/12.2 Archive/2025/가상상사/공고.md", "# 지난 공고")
+        let file = try #require(fixture.paths.postingFile(company: "가상상사(주)"))
+        #expect(file.path.hasSuffix("/12 JobOpening/12.1 Active/가상상사/공고.md"))
     }
 
     @Test("설정 경로로 12.0을 읽고, 산출물 폴더가 12 밖에 있어도 찾는다")

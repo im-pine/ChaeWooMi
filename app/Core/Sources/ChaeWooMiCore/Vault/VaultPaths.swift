@@ -59,21 +59,25 @@ public struct VaultPaths: Codable, Equatable, Sendable {
         return text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
-    /// 공고 분석 파일 경로. 이미 있는 회사 폴더(표기만 다른 것 포함)가 있으면 그 폴더
+    /// 공고 분석 파일 경로. 공고 분석 폴더(`12.1 Active`) 안에 이미 있는 회사 폴더(표기만 다른 것 포함)가 있으면 그 폴더.
+    /// 지난 공고(`12.2 Archive`)에는 쓰지 않는다 (리뷰봇 #42)
     public func postingFile(company: String) -> URL? {
-        let folders = CompanyFolders.find(company: company, in: layout)
-        if let existing = folders.companyFolders.first {
-            return existing.appendingPathComponent(Self.postingFileName)
+        guard let active = Self.folder(postingFolder) else { return nil }
+        let key = CompanyName.normalize(company)
+        let existing = CompanyFolders.find(company: company, in: layout).companyFolders.first {
+            $0.deletingLastPathComponent().standardizedFileURL == active.standardizedFileURL
+                && CompanyName.normalize($0.lastPathComponent) == key
         }
-        return Self.folder(postingFolder)?
-            .appendingPathComponent(Self.folderName(company))
+        return (existing ?? active.appendingPathComponent(Self.folderName(company)))
             .appendingPathComponent(Self.postingFileName)
     }
 
-    /// 초안 `.md` 경로. 이미 있는 가장 최근 연도 산출물 폴더가 있으면 그 폴더, 없으면 `{기업명} {올해}`
+    /// 초안 `.md` 경로: `{기업명} {올해}` 폴더. 올해 폴더가 표기만 다르게 이미 있으면 그 폴더.
+    /// 지난해 폴더는 쓰지 않는다 — 다음 해 재지원이 지난 지원 산출물을 덮어쓰지 않게 (리뷰봇 #42)
     public func draftFile(_ kind: DocumentKind, company: String, year: Int = CalendarDay.today().year) -> URL? {
         let name = Self.folderName(company)
-        let existing = CompanyFolders.find(company: company, in: layout).currentOutputFolders.first
+        let existing = CompanyFolders.find(company: company, in: layout).outputFolders
+            .first { CompanyFolders.year(of: $0.lastPathComponent) == year }
         guard let folder = existing ?? Self.folder(outputFolder)?.appendingPathComponent("\(name) \(year)") else {
             return nil
         }
