@@ -86,8 +86,21 @@ public actor RelayClient {
         try result.get()
     }
 
-    /// 같은 Mac에서 메시지를 받을 수 있는 세션 이름 목록
-    public func listSessions(timeout: Duration = .seconds(60)) async throws(RelayError) -> [String] {
+    /// 같은 Mac에서 메시지를 받을 수 있는 세션 이름 목록. 응답이 없으면 다시 묻는다 (목록 조회는 여러 번 해도 같음).
+    /// 실측: 역할 세션 회신이 막 도착한 순간 목록을 물으면, 중계 모델이 회신 한 줄만 출력하고 목록 응답을 빠뜨렸다 →
+    /// 앱이 60초 기다리다 "중계 세션이 응답하지 않습니다"로 이력서 요청을 취소함
+    public func listSessions(timeout: Duration = .seconds(15), attempts: Int = 3) async throws(RelayError) -> [String] {
+        for attempt in 1...max(attempts, 1) {
+            do {
+                return try await listOnce(timeout: timeout)
+            } catch {
+                guard error == .timedOut, attempt < attempts else { throw error }
+            }
+        }
+        throw .timedOut
+    }
+
+    private func listOnce(timeout: Duration) async throws(RelayError) -> [String] {
         let id = UUID().uuidString
         try write(.list(id: id))
         let result = await withCheckedContinuation { continuation in
