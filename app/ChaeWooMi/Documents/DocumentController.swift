@@ -66,7 +66,8 @@ final class DocumentController {
         guard let page = cards.model.page, let company = cards.confirmedCompany else { return }
         analysisCompany = company
         let input = AnalysisWorkflow.Input(
-            company: company, platform: platformLabel(page.site), url: page.url, postingText: page.postingText
+            company: company, platform: platformLabel(page.site), url: page.url, postingText: page.postingText,
+            postingPath: settings.vaultPaths.postingFile(company: company)?.path
         )
         if let request = analysis.start(input, analysisDone: analysisDone(company)) {
             send(request, id: analysis.requestID ?? "")
@@ -168,9 +169,13 @@ final class DocumentController {
 
     private func documentInput(_ kind: DocumentKind, questions: [CoverLetterQuestion]) -> DocumentWorkflow.Input? {
         guard let page = cards.model.page, let company = cards.confirmedCompany else { return nil }
+        // 설정의 저장 규칙으로 결과 파일 경로를 정해 요청에 넣는다 (세션과 같은 파일을 본다)
+        let paths = settings.vaultPaths
         return DocumentWorkflow.Input(
             kind: kind, company: company, platform: platformLabel(page.site), url: page.url,
-            postingText: page.postingText, questions: questions
+            postingText: page.postingText, questions: questions,
+            postingPath: paths.postingFile(company: company)?.path,
+            draftPath: paths.draftFile(kind, company: company)?.path
         )
     }
 

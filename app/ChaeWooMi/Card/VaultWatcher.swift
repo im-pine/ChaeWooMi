@@ -11,9 +11,10 @@ final class VaultWatcher {
         self.onChange = onChange
     }
 
-    func watch(_ folder: URL?) {
+    /// 여러 폴더를 한 스트림으로 감시한다 (지원 현황 · 공고 분석 · 산출물 폴더가 따로 있을 수 있음)
+    func watch(_ folders: [URL]) {
         stop()
-        guard let folder else { return }
+        guard !folders.isEmpty else { return }
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),
@@ -28,7 +29,7 @@ final class VaultWatcher {
         }
         // 0.5초 안에 몰려온 변경은 한 번으로 묶는다
         stream = FSEventStreamCreate(
-            nil, callback, &context, [folder.path] as CFArray,
+            nil, callback, &context, folders.map(\.path) as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 0.5,
             FSEventStreamCreateFlags(kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagNoDefer)
         )

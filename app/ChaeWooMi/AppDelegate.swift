@@ -32,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launcher.show()
         bridge.start()
         // 볼트 경로가 없으면(첫 실행) 설정부터 연다
-        if settings.vaultPath == nil { settingsWindow.show() }
+        if !settings.vaultPaths.problems.isEmpty { settingsWindow.show() }
         #if DEBUG
         SettingsTypingSelfTest.runIfRequested(
             open: { [unowned self] in
