@@ -24,9 +24,14 @@ final class CardStore {
     @ObservationIgnored weak var documents: DocumentController?
     /// 지원 기록 (12.0이 바뀌면 반영을 확인한다)
     @ObservationIgnored weak var records: RecordController?
-    /// 확장에 지금 탭을 다시 읽어 달라고 보낸다. 보낼 연결이 없으면 false
-    @ObservationIgnored var requestRescan: (@MainActor () -> Bool)?
-    @ObservationIgnored private var rescanFallback: Task<Void, Never>?
+    /// 확장에 지금 탭을 다시 읽어(`reload`면 새로고침해) 달라고 보낸다. 보낼 연결이 없으면 false
+    @ObservationIgnored var requestRescan: (@MainActor (Bool) -> Bool)?
+    /// 지금 연결된 확장의 버전 (연결 없음이면 nil)
+    @ObservationIgnored var extensionVersion: (@MainActor () -> String?)?
+    /// "지원 이력 확인" 단계와 직접 입력 대신 알릴 말
+    private(set) var historyCheck = HistoryCheck()
+    private(set) var historyNotice: String?
+    @ObservationIgnored private var historyTimer: Task<Void, Never>?
     @ObservationIgnored private lazy var watcher = VaultWatcher { [weak self] in self?.vaultChanged() }
     @ObservationIgnored private var watchedPaths: VaultPaths?
 
@@ -46,32 +51,66 @@ final class CardStore {
     }
 
     func handle(_ event: CardModel.Event) {
-        if case .page = event { resetView() }
+        if case .page = event {
+            resetView()
+            // 공고가 오면 "지원 이력 확인"은 그 자리에서 끝난다
+            historyCheck.found()
+            historyTimer?.cancel()
+        }
         if case .pageLeft = event { resetView() }
         model.handle(event, lookup: lookup)
     }
 
-    /// "지원 이력 확인" 버튼: 접힌 카드는 펼치고, 카드가 없으면 지금 공고를 다시 읽는다.
-    /// 잠시 기다려도 공고가 오지 않으면(지정 외 사이트 · 브라우저 연결 없음) 수동 조회 카드를 연다
+    /// "지원 이력 확인" 버튼: 접힌 카드는 펼치고, 카드가 없으면 단계적으로 다시 받아 온다 (Core `HistoryCheck`).
+    /// 연결 대기 → 다시 읽기 → 새로고침 → 그래도 회사명이 없으면 직접 입력 (직접 입력은 최후의 수단)
     func checkHistory() {
         guard content == .hidden else {
             collapsed = false
             return
         }
-        rescanFallback?.cancel()
-        guard requestRescan?() == true else {
-            handle(.manualActivated)
-            return
-        }
-        rescanFallback = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Self.rescanWait))
-            guard !Task.isCancelled, let self, content == .hidden else { return }
-            handle(.manualActivated)
-        }
+        historyNotice = nil
+        apply(historyCheck.start(extensionVersion: extensionVersion?()))
     }
 
-    /// 다시 읽기를 기다리는 시간 (사람인은 본문을 늦게 불러와 회사명이 늦게 나올 수 있음)
-    static let rescanWait: Double = 2.5
+    /// 지금 탭이 지정 사이트 공고가 아님 → 바로 직접 입력
+    func notPosting() {
+        apply(historyCheck.notPosting())
+    }
+
+    /// 확장이 (다시) 연결됨 → 기다리던 확인을 이어 간다
+    func extensionConnected(version: String) {
+        apply(historyCheck.connected(extensionVersion: version))
+    }
+
+    private func apply(_ effects: [HistoryCheck.Effect]) {
+        for effect in effects {
+            switch effect {
+            case let .rescan(reload): _ = requestRescan?(reload)
+            case let .manual(reason):
+                handle(.manualActivated)
+                notice = reason
+            case let .notice(text): historyNotice = text
+            }
+        }
+        scheduleHistoryTimeout()
+    }
+
+    /// 이 단계의 기다림이 끝나도 카드가 없으면 다음 단계로
+    private func scheduleHistoryTimeout() {
+        historyTimer?.cancel()
+        guard historyCheck.isChecking else { return }
+        let wait = historyCheck.wait
+        let step = historyCheck.step
+        historyTimer = Task { [weak self] in
+            try? await Task.sleep(for: wait)
+            guard !Task.isCancelled, let self, historyCheck.step == step else { return }
+            guard content == .hidden else {
+                historyCheck.found()
+                return
+            }
+            apply(historyCheck.timedOut())
+        }
+    }
 
     func applyButton(covering: Bool) {
         applyButtonCovering = covering
