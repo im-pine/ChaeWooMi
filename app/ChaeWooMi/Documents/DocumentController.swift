@@ -106,8 +106,7 @@ final class DocumentController {
 
     // MARK: - 아이콘 상태
 
-    /// 진행 중인 아이콘 (APP-012 덮어쓰기)
-    /// 진행 중인 아이콘과 그 단계 이름 (초안 작성 중 · PDF 만드는 중 등을 구분)
+    /// 진행 중인 아이콘과 그 단계 이름 (APP-012 덮어쓰기, 초안 작성 중 · PDF 만드는 중 등을 구분)
     var running: [TaskKind: String] {
         let analyzing = DocumentWorkflow.analysisProgressLabel
         var steps: [TaskKind: String] = analysis.requestID == nil ? [:] : [.analysis: analyzing]
