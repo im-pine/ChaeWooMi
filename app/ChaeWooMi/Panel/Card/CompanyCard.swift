@@ -40,7 +40,8 @@ struct CompanyCard: View {
         }
     }
 
-    /// 아이콘 클릭 분기 (APP-017): 시작 전 = 요청, 진행 중 = 진행 상세, 초안 있음 = 검토 모달, 완료 = 결과 상세(재요청 없음)
+    /// 아이콘 클릭 분기 (APP-017): 시작 전 = 요청, 진행 중 = 진행 상세, 초안 있음 · 완료 = 검토 모달(재요청 없음),
+    /// 공고 분석 완료 = 결과 상세
     private func handle(_ kind: TaskKind, _ action: TaskAction) {
         store.notice = nil
         switch (kind, action) {
@@ -49,7 +50,7 @@ struct CompanyCard: View {
         case (.coverLetter, .start): store.documents?.questionsWindow.show()
         case (.resume, .openReview): store.documents?.reopenDraft(.resume)
         case (.coverLetter, .openReview): store.documents?.reopenDraft(.coverLetter)
-        case (_, .showProgress), (_, .showResult), (_, .showFailure): store.expanded = true
+        case (_, .showProgress), (_, .showFailure): store.expanded = true
         case let (_, .explain(reason)): store.notice = reason
         case (.analysis, .openReview): store.expanded = true
         }
