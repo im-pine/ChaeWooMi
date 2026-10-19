@@ -2,7 +2,8 @@ import AppKit
 import ChaeWooMiCore
 import SwiftUI
 
-/// 자기소개서 문항 입력 (DOC-005 · DOC-006): 문항 · 글자수 · 공백 포함 여부를 받아 자소서 초안을 요청한다
+/// 자기소개서 문항 입력 (DOC-005 · DOC-006): 문항 · 글자수 · 공백 포함 여부를 받아 자소서 초안을 요청한다.
+/// 기업 문항은 선택 — 비워 두면 문항 없이 요청한다 (사용자 요청 2026-10-19)
 @MainActor
 final class QuestionsWindowController {
     private weak var controller: DocumentController?
@@ -54,6 +55,10 @@ struct QuestionsView: View {
                 }
             }
             Button { rows.append(QuestionRow()) } label: { Label("문항 추가", systemImage: "plus") }
+            if questions.isEmpty {
+                Text("문항이 없으면 기본 자기소개서에 공고 분석을 바탕으로 어필할 경험을 더해 만듭니다")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             ForEach(problemTexts, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
             HStack {
                 Spacer()
@@ -83,22 +88,22 @@ struct QuestionsView: View {
         .textFieldStyle(.roundedBorder)
     }
 
+    /// 입력한 문항만 (모두 비운 칸은 뺀다)
     private var questions: [CoverLetterQuestion] {
-        rows.map { row in
+        CoverLetterQuestion.entered(rows.map { row in
             CoverLetterQuestion(
                 text: row.text,
                 limit: Int(row.limit.trimmingCharacters(in: .whitespaces)),
                 includesSpaces: row.includesSpaces
             )
-        }
+        })
     }
 
     /// 빈 문항 · 잘못된 글자수 안내 (요청 전에)
     private var problemTexts: [String] {
-        CoverLetterQuestion.problems(questions).compactMap { problem in
+        CoverLetterQuestion.problems(questions).map { problem in
             switch problem {
-            case .noQuestions: "문항을 하나 이상 입력하세요"
-            case let .emptyQuestion(number): number == 1 && rows.count == 1 ? nil : "\(number)번 문항이 비어 있습니다"
+            case let .emptyQuestion(number): "\(number)번 문항이 비어 있습니다"
             case let .invalidLimit(number): "\(number)번 문항의 글자수는 1 이상이어야 합니다"
             }
         }
