@@ -23,6 +23,19 @@ describe('지원 완료 화면 감지 (HIS-017)', () => {
     expect(isCompletePage(doc, 'https://www.wanted.co.kr/wd/300001', wanted)).toBe(false);
   });
 
+  it('사람인 입사지원 레이어의 "입사지원 완료!" 화면을 완료로 본다, 공고의 "입사지원" 버튼만으로는 아니다', () => {
+    const saramin = DEFAULT_CONFIG.sites.find((site) => site.id === 'saramin')!;
+    const url = 'https://www.saramin.co.kr/zf_user/member/apply/complete?rec_idx=1';
+    const done = parse(
+      '<body><h2>입사지원 완료!</h2><p>방금 지원한 공고는 <a>지원현황</a>에서 확인 가능합니다.</p></body>',
+    );
+    expect(isCompletePage(done, url, saramin)).toBe(true);
+    const posting = parse('<body><h1>웹 퍼블리셔 채용</h1><button>입사지원</button></body>');
+    expect(
+      isCompletePage(posting, 'https://www.saramin.co.kr/zf_user/jobs/view?rec_idx=1', saramin),
+    ).toBe(false);
+  });
+
   it('공고 화면의 "지원하기" · "지원 완료" 배지만으로는 완료로 보지 않는다', () => {
     const doc = parse('<body><button>지원하기</button><span>지원 완료</span></body>');
     expect(isCompletePage(doc, 'https://www.wanted.co.kr/wd/300001', wanted)).toBe(false);

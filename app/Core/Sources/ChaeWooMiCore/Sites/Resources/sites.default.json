@@ -7,7 +7,7 @@
       "domains": ["saramin.co.kr"],
       "postingPatterns": ["^/zf_user/jobs/(relay/)?view\\?(.*&)?rec_idx=\\d+"],
       "completePatterns": [],
-      "completeTexts": ["지원이 완료되었습니다", "지원 완료되었습니다"],
+      "completeTexts": ["지원이 완료되었습니다", "지원 완료되었습니다", "입사지원 완료!", "방금 지원한 공고는"],
       "company": {
         "jsonLd": true,
         "meta": [{ "property": "og:title", "pattern": "^\\[(.+?)\\]" }],
