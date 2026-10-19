@@ -47,6 +47,21 @@ public struct SiteConfig: Codable, Equatable, Sendable {
         public var texts: [String]
     }
 
+    /// 기본 설정의 지원 완료 문구 · 주소를 같은 id 사이트에 더한다 (파일에 있는 것은 그대로 두고 없는 것만).
+    /// `sites.json`은 첫 실행 때 기본값을 복사해 두어, 나중에 기본 문구를 고쳐도 설치본에 닿지 않았다
+    /// (실측: 사람인 완료 화면 "입사지원 완료!")
+    public func addingCompletion(from defaults: SiteConfig) -> SiteConfig {
+        var merged = self
+        for index in merged.sites.indices {
+            guard let base = defaults.sites.first(where: { $0.id == merged.sites[index].id }) else { continue }
+            merged.sites[index].completeTexts += base.completeTexts
+                .filter { !merged.sites[index].completeTexts.contains($0) }
+            merged.sites[index].completePatterns += base.completePatterns
+                .filter { !merged.sites[index].completePatterns.contains($0) }
+        }
+        return merged
+    }
+
     public static func decode(_ data: Data) throws -> SiteConfig {
         try JSONDecoder().decode(SiteConfig.self, from: data)
     }

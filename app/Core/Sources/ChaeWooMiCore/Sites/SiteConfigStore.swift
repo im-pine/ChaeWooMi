@@ -32,7 +32,7 @@ public enum SiteConfigStore {
         }
         let problems = SiteConfigValidator.problems(in: config)
         return problems.isEmpty
-            ? Loaded(config: config, problems: [])
+            ? Loaded(config: config.addingCompletion(from: fallback), problems: [])
             : Loaded(config: fallback, problems: problems.map(\.description))
     }
 
