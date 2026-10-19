@@ -27,6 +27,7 @@ public struct DocumentWorkflow: Equatable, Sendable {
     public mutating func handle(_ event: Event) -> [Effect] {
         switch event {
         case let .start(input, snapshot): return start(input, snapshot)
+        case let .join(input, snapshot, analysisID): return join(input, snapshot, analysisID: analysisID)
         case let .reopen(input, snapshot): return reopen(input, snapshot)
         case let .files(snapshot): return filesChanged(snapshot)
         case let .reply(reply): return replied(reply)
@@ -48,6 +49,19 @@ public struct DocumentWorkflow: Equatable, Sendable {
         careerRequests = []
         // 분석이 이미 있으면 분석 요청을 건너뛴다 (ANL-009)
         return snapshot.analysisDone ? requestDraft() : requestAnalysis()
+    }
+
+    /// 다른 문서가 이미 보낸 분석 요청을 함께 기다린다 (이력서 · 자소서 동시 시작에 분석을 두 번 보내지 않게).
+    /// 그 요청의 회신 · 공고.md로 초안 요청에 넘어간다. 분석이 이미 있으면 바로 초안
+    private mutating func join(_ input: Input, _ snapshot: DocumentSnapshot, analysisID: String) -> [Effect] {
+        guard phase == .idle || isFinished else { return [] }
+        guard !snapshot.analysisDone else { return start(input, snapshot) }
+        self.input = input
+        self.snapshot = snapshot
+        commands = []
+        careerRequests = []
+        phase = .analyzing(requestID: analysisID)
+        return []
     }
 
     private mutating func reopen(_ input: Input, _ snapshot: DocumentSnapshot) -> [Effect] {
@@ -186,7 +200,8 @@ public struct DocumentWorkflow: Equatable, Sendable {
 
     // MARK: - 도움
 
-    private var currentRequestID: String? {
+    /// 지금 회신을 기다리는 요청 id
+    public var currentRequestID: String? {
         switch phase {
         case let .analyzing(id), let .drafting(id), let .commanding(id), let .generatingPDF(id): id
         default: nil

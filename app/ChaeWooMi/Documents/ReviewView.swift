@@ -5,18 +5,19 @@ import SwiftUI
 /// 문서 검토 모달 (DOC-017): 왼쪽 Markdown 편집 · 오른쪽 수정 명령, 아래 초안 보관 / 승인 · 파일 생성
 struct ReviewView: View {
     let controller: DocumentController
+    let kind: DocumentKind
     @Bindable var model: ReviewModel
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
-                EditorPane(model: model, locked: controller.workflow.editingLocked)
+                EditorPane(model: model, locked: controller.workflow(kind).editingLocked)
                 Divider()
-                CommandPane(controller: controller, model: model)
+                CommandPane(controller: controller, kind: kind, model: model)
                     .frame(width: 380)
             }
             Divider()
-            ReviewFooter(controller: controller, model: model)
+            ReviewFooter(controller: controller, kind: kind, model: model)
         }
         .frame(minWidth: 960, minHeight: 600)
     }
@@ -66,6 +67,7 @@ private struct EditorPane: View {
 /// 오른쪽: 내가 보낸 명령과 상태만 (AI 답변 문장은 보이지 않음, DOC-019 · DOC-029), CAREER-DB 반영 요청 카드 (DOC-031)
 private struct CommandPane: View {
     let controller: DocumentController
+    let kind: DocumentKind
     let model: ReviewModel
     @State private var input = ""
     @FocusState private var inputFocused: Bool
@@ -75,8 +77,8 @@ private struct CommandPane: View {
             Text("Claude 수정 요청").font(.headline)
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(controller.workflow.commands, id: \.id) { CommandRow(command: $0) }
-                    ForEach(controller.workflow.careerRequests, id: \.self) { CareerCard(text: $0) }
+                    ForEach(controller.workflow(kind).commands, id: \.id) { CommandRow(command: $0) }
+                    ForEach(controller.workflow(kind).careerRequests, id: \.self) { CareerCard(text: $0) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -101,12 +103,12 @@ private struct CommandPane: View {
 
     /// 처리 중에는 보내지 않는다 (DOC-027)
     private var canSend: Bool {
-        controller.workflow.phase == .reviewing && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        controller.workflow(kind).phase == .reviewing && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func send() {
         guard canSend else { return }
-        controller.command(input, userEdited: model.userEdited)
+        controller.command(kind, input, userEdited: model.userEdited)
         model.markSent()
         input = ""
         inputFocused = true
@@ -155,6 +157,7 @@ private struct CareerCard: View {
 /// 푸터: 같은 크기(184×40, 간격 12) 두 버튼, 아이콘 없이 글자 가운데 (DOC-023). 실패 · 진행 상태도 여기서 알린다
 private struct ReviewFooter: View {
     let controller: DocumentController
+    let kind: DocumentKind
     let model: ReviewModel
 
     static let buttonSize = CGSize(width: 184, height: 40)
@@ -163,9 +166,9 @@ private struct ReviewFooter: View {
         HStack(spacing: 12) {
             status
             Spacer()
-            footerButton("초안 보관") { controller.archive() }
+            footerButton("초안 보관") { controller.archive(kind) }
             footerButton("승인 · 파일 생성", prominent: true) {
-                controller.approve(userEdited: model.userEdited)
+                controller.approve(kind, userEdited: model.userEdited)
                 model.markSent()
             }
         }
@@ -187,11 +190,11 @@ private struct ReviewFooter: View {
         .background(
             RoundedRectangle(cornerRadius: 8).fill(prominent ? CardTheme.primary : Color.secondary.opacity(0.12))
         )
-        .disabled(controller.workflow.phase != .reviewing)
+        .disabled(controller.workflow(kind).phase != .reviewing)
     }
 
     @ViewBuilder private var status: some View {
-        switch controller.workflow.phase {
+        switch controller.workflow(kind).phase {
         case .generatingPDF:
             Label("PDF를 만드는 중", systemImage: "hourglass").foregroundStyle(.secondary)
         case .completed:
@@ -199,7 +202,7 @@ private struct ReviewFooter: View {
         case let .failed(failure):
             HStack {
                 Label(failure.reason, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
-                Button("다시 시도") { controller.retry() }
+                Button("다시 시도") { controller.retry(kind) }
             }
         default:
             EmptyView()

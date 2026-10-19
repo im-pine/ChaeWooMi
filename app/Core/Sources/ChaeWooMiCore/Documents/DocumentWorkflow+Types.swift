@@ -97,6 +97,8 @@ extension DocumentWorkflow {
 
     public enum Event: Equatable, Sendable {
         case start(Input, DocumentSnapshot)
+        /// 다른 문서가 보낸 분석 요청(`analysisID`)을 함께 기다렸다가 초안을 요청한다
+        case join(Input, DocumentSnapshot, analysisID: String)
         /// 이미 있는 초안(초안 있음 아이콘)을 검토 모달로 다시 연다. 세션 요청 없음
         case reopen(Input, DocumentSnapshot)
         /// 볼트 파일이 바뀜 (FSEvents)
