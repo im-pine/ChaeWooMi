@@ -121,12 +121,12 @@ public enum TaskStateRule {
     }
 }
 
-/// 아이콘 클릭 결과 (APP-017). 완료 · 진행 중 아이콘을 다시 눌러도 새 작업을 만들지 않는다
+/// 아이콘 클릭 결과 (APP-017). 완료 · 진행 중 아이콘을 다시 눌러도 새 작업을 만들지 않는다.
+/// 완료(PDF까지 만든 문서)도 검토 모달을 열어 더 고칠 수 있다 (사용자 요청 2026-10-19)
 public enum TaskAction: Equatable, Sendable {
     case start
     case showProgress
     case openReview
-    case showResult
     case showFailure(String)
     case explain(String)
 
@@ -134,8 +134,7 @@ public enum TaskAction: Equatable, Sendable {
         switch state {
         case .ready: .start
         case .running: .showProgress
-        case .waitingReview: .openReview
-        case .completed: .showResult
+        case .waitingReview, .completed: .openReview
         case let .failed(reason): .showFailure(reason)
         case let .unavailable(reason): .explain(reason)
         }

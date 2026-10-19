@@ -50,9 +50,15 @@ final class DocumentController {
         }
     }
 
-    /// 초안 있음 아이콘: 세션 요청 없이 검토 모달
+    /// 초안 있음 · 완료 아이콘: 세션 요청 없이 검토 모달 (완료한 문서도 더 고친다)
     func reopenDraft(_ kind: DocumentKind) {
         guard let input = documentInput(kind, questions: []), let layout = cards.loaded?.layout else { return }
+        // PDF만 있고 초안 .md가 없으면 모달에 띄울 원고가 없다 (잠금을 잡기 전에 알린다)
+        guard DocumentSnapshot.read(kind, company: input.company, layout: layout).draft != nil else {
+            notice = "수정할 초안(.md)이 없습니다"
+            return
+        }
+        notice = nil
         let job = DocumentJob(company: input.company, kind: kind)
         Task {
             switch await lock.acquire(job) {

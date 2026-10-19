@@ -124,9 +124,9 @@ struct TaskStateTests {
         #expect(state() == .ready)
     }
 
-    @Test("완료 · 진행 중 아이콘을 다시 눌러도 새 작업을 만들지 않는다 (QA-006 · QA-007)")
+    @Test("완료 · 진행 중 아이콘을 다시 눌러도 새 작업을 만들지 않는다 (QA-006 · QA-007), 완료는 검토 모달로 더 고친다")
     func clickRouting() {
-        #expect(TaskAction.onClick(.completed) == .showResult)
+        #expect(TaskAction.onClick(.completed) == .openReview)
         #expect(TaskAction.onClick(.running("초안 작성 중")) == .showProgress)
         #expect(TaskAction.onClick(.waitingReview) == .openReview)
         #expect(TaskAction.onClick(.failed("x")) == .showFailure("x"))
