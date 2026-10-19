@@ -5,13 +5,16 @@ import Observation
 
 /// 문서 · 분석 요청을 진행한다. 판단은 Core `DocumentWorkflow` · `AnalysisWorkflow`가 하고,
 /// 여기서는 그 효과(세션 요청 · 검토 모달 · 잠금 해제)를 실행하고 볼트 변화 · 회신을 다시 넣는다.
+/// 이력서 · 자소서는 각자의 상태 기계 · 검토 모달로 함께 진행한다 (사용자 요청 2026-10-19)
 @MainActor
 @Observable
 final class DocumentController {
-    private(set) var workflow = DocumentWorkflow()
+    private(set) var workflows = Dictionary(
+        uniqueKeysWithValues: DocumentKind.allCases.map { ($0, DocumentWorkflow()) }
+    )
     private(set) var analysis = AnalysisWorkflow()
-    /// 지금 문서 작업 (이력서 · 자소서 중 하나, DOC-010)
-    private(set) var activeJob: DocumentJob?
+    /// 종류별 마지막 문서 작업
+    private(set) var activeJobs: [DocumentKind: DocumentJob] = [:]
     /// 세션 꺼짐 등으로 보내지 못한 이유 (AGT-004)
     private(set) var notice: String?
 
@@ -19,7 +22,7 @@ final class DocumentController {
     @ObservationIgnored private let sessions: SessionHub
     @ObservationIgnored private let cards: CardStore
     @ObservationIgnored private let lock = DocumentJobLock()
-    @ObservationIgnored lazy var reviewWindow = ReviewWindowController(controller: self)
+    @ObservationIgnored private var reviewWindows: [DocumentKind: ReviewWindowController] = [:]
     @ObservationIgnored lazy var questionsWindow = QuestionsWindowController(controller: self)
     @ObservationIgnored private var analysisCompany: String?
 
@@ -27,6 +30,17 @@ final class DocumentController {
         self.settings = settings
         self.sessions = sessions
         self.cards = cards
+    }
+
+    func workflow(_ kind: DocumentKind) -> DocumentWorkflow {
+        workflows[kind] ?? DocumentWorkflow()
+    }
+
+    private func reviewWindow(_ kind: DocumentKind) -> ReviewWindowController {
+        if let window = reviewWindows[kind] { return window }
+        let window = ReviewWindowController(controller: self, kind: kind)
+        reviewWindows[kind] = window
+        return window
     }
 
     // MARK: - 시작
@@ -38,14 +52,20 @@ final class DocumentController {
         Task {
             switch await lock.acquire(job) {
             case .granted:
-                activeJob = job
+                activeJobs[kind] = job
                 notice = nil
-                workflow = DocumentWorkflow()
-                run(workflow: .start(input, DocumentSnapshot.read(kind, company: input.company, layout: layout)))
+                workflows[kind] = DocumentWorkflow()
+                let snapshot = DocumentSnapshot.read(kind, company: input.company, layout: layout)
+                // 다른 문서가 이 회사 분석을 이미 요청했으면 분석을 또 보내지 않고 함께 기다린다
+                if let analysisID = pendingAnalysis(company: input.company, besides: kind) {
+                    run(kind, .join(input, snapshot, analysisID: analysisID))
+                } else {
+                    run(kind, .start(input, snapshot))
+                }
             case .alreadyRunning:
                 break
             case let .busy(other):
-                notice = "\(label(other.kind)) 작업이 끝난 뒤 시작할 수 있습니다"
+                notice = "\(other.company) \(label(other.kind)) 작업이 끝난 뒤 시작할 수 있습니다"
             }
         }
     }
@@ -65,13 +85,13 @@ final class DocumentController {
             case .granted: break
             case .alreadyRunning:
                 // 모달을 닫았거나 다른 앱으로 가려진 뒤 다시 누름 → 이어지던 검토 모달을 다시 앞으로
-                if workflow.phase == .reviewing { reviewWindow.reshow() }
+                if workflow(kind).phase == .reviewing { reviewWindow(kind).reshow() }
                 return
             case .busy: return
             }
-            activeJob = job
-            workflow = DocumentWorkflow()
-            run(workflow: .reopen(input, DocumentSnapshot.read(kind, company: input.company, layout: layout)))
+            activeJobs[kind] = job
+            workflows[kind] = DocumentWorkflow()
+            run(kind, .reopen(input, DocumentSnapshot.read(kind, company: input.company, layout: layout)))
         }
     }
 
@@ -94,18 +114,23 @@ final class DocumentController {
 
     // MARK: - 검토 모달에서
 
-    func command(_ text: String, userEdited: Bool) { run(workflow: .command(text, userEdited: userEdited)) }
-    func approve(userEdited: Bool) { run(workflow: .approve(userEdited: userEdited)) }
-    func archive() { run(workflow: .archive) }
-    func retry(supplement: String? = nil) { run(workflow: .retry(supplement: supplement)) }
+    func command(_ kind: DocumentKind, _ text: String, userEdited: Bool) {
+        run(kind, .command(text, userEdited: userEdited))
+    }
+
+    func approve(_ kind: DocumentKind, userEdited: Bool) { run(kind, .approve(userEdited: userEdited)) }
+    func archive(_ kind: DocumentKind) { run(kind, .archive) }
+    func retry(_ kind: DocumentKind, supplement: String? = nil) { run(kind, .retry(supplement: supplement)) }
 
     // MARK: - 바깥 신호
 
     /// 볼트 파일이 바뀜
     func filesChanged() {
         if let company = analysisCompany { analysis.filesChanged(analysisDone: analysisDone(company)) }
-        guard let job = activeJob, let layout = cards.loaded?.layout else { return }
-        run(workflow: .files(DocumentSnapshot.read(job.kind, company: job.company, layout: layout)))
+        guard let layout = cards.loaded?.layout else { return }
+        for (kind, job) in activeJobs {
+            run(kind, .files(DocumentSnapshot.read(kind, company: job.company, layout: layout)))
+        }
     }
 
     func received(_ reply: SessionReply) {
@@ -114,7 +139,7 @@ final class DocumentController {
         if reply.id == analysis.requestID, let company = analysisCompany {
             analysis.replied(reply, analysisDone: analysisDone(company), postingExists: postingExists(company))
         }
-        run(workflow: .reply(reply))
+        for kind in activeJobs.keys { run(kind, .reply(reply)) }
     }
 
     // MARK: - 아이콘 상태
@@ -123,49 +148,60 @@ final class DocumentController {
     var running: [TaskKind: String] {
         let analyzing = DocumentWorkflow.analysisProgressLabel
         var steps: [TaskKind: String] = analysis.requestID == nil ? [:] : [.analysis: analyzing]
-        guard let job = activeJob, let step = DocumentWorkflow.progressLabel(workflow.phase) else { return steps }
-        if case .analyzing = workflow.phase { steps[.analysis] = analyzing }
-        steps[taskKind(job.kind)] = step
+        for kind in activeJobs.keys {
+            let phase = workflow(kind).phase
+            guard let step = DocumentWorkflow.progressLabel(phase) else { continue }
+            if case .analyzing = phase { steps[.analysis] = analyzing }
+            steps[taskKind(kind)] = step
+        }
         return steps
     }
 
     var failures: [TaskKind: String] {
         var map: [TaskKind: String] = [:]
         if case let .failed(reason, missing) = analysis.phase { map[.analysis] = Self.describe(reason, missing) }
-        if let job = activeJob, case let .failed(failure) = workflow.phase {
-            map[taskKind(job.kind)] = Self.describe(failure.reason, failure.missing)
+        for kind in activeJobs.keys {
+            if case let .failed(failure) = workflow(kind).phase {
+                map[taskKind(kind)] = Self.describe(failure.reason, failure.missing)
+            }
         }
         return map
     }
 
-    /// 다른 문서가 진행 중이면 이 문서는 시작할 수 없다 (DOC-010)
-    func blockedReason(for kind: TaskKind) -> String? {
-        guard let job = activeJob, kind != .analysis, taskKind(job.kind) != kind, isActive else { return nil }
-        return "\(label(job.kind)) 작업 중에는 시작할 수 없습니다"
-    }
-
     // MARK: - 내부
 
-    private func run(workflow event: DocumentWorkflow.Event) {
+    private func run(_ kind: DocumentKind, _ event: DocumentWorkflow.Event) {
+        var workflow = workflow(kind)
         let before = workflow.phase
-        defer { openPDFIfFinished(after: before) }
-        for effect in workflow.handle(event) {
+        let effects = workflow.handle(event)
+        workflows[kind] = workflow
+        defer { openPDFIfFinished(kind, after: before) }
+        for effect in effects {
             switch effect {
             case let .send(request, id): send(request, id: id)
-            case let .openReview(url): reviewWindow.show(draft: url, layout: cards.loaded?.layout)
+            case let .openReview(url): reviewWindow(kind).show(draft: url, layout: cards.loaded?.layout)
             case .showCareerRequest: break // 모달이 workflow.careerRequests를 보인다
-            case .releaseLock: release()
+            case .releaseLock: release(kind)
             }
         }
-        reviewWindow.refresh()
+        reviewWindow(kind).refresh()
     }
 
     /// PDF 생성 단계에서 완료로 바뀌면 그 PDF를 연다 (사용자 요청 2026-10-18)
-    private func openPDFIfFinished(after before: DocumentWorkflow.Phase) {
+    private func openPDFIfFinished(_ kind: DocumentKind, after before: DocumentWorkflow.Phase) {
+        let workflow = workflow(kind)
         guard DocumentWorkflow.finishedPDF(from: before, to: workflow.phase), let pdf = workflow.snapshot?.pdf else {
             return
         }
         NSWorkspace.shared.open(pdf)
+    }
+
+    /// 같은 회사의 다른 문서가 기다리는 분석 요청 id
+    private func pendingAnalysis(company: String, besides kind: DocumentKind) -> String? {
+        for (other, job) in activeJobs where other != kind && job.company == company {
+            if case let .analyzing(id) = workflow(other).phase { return id }
+        }
+        return nil
     }
 
     private func send(_ request: SessionRequest, id: String) {
@@ -173,20 +209,15 @@ final class DocumentController {
         Task {
             guard let refusal = await sessions.send(request, id: id, roster: roster) else { return }
             notice = refusal
-            if id == analysis.requestID { analysis.cancel() } else { run(workflow: .cancel) }
+            if id == analysis.requestID { analysis.cancel(); return }
+            // 그 요청을 기다리는 문서 모두 (함께 기다리던 분석 포함)
+            for kind in activeJobs.keys where workflow(kind).currentRequestID == id { run(kind, .cancel) }
         }
     }
 
-    private func release() {
-        guard let job = activeJob else { return }
+    private func release(_ kind: DocumentKind) {
+        guard let job = activeJobs[kind] else { return }
         Task { await lock.release(job) }
-    }
-
-    private var isActive: Bool {
-        switch workflow.phase {
-        case .idle, .completed, .failed, .archived: false
-        default: true
-        }
     }
 
     private func documentInput(_ kind: DocumentKind, questions: [CoverLetterQuestion]) -> DocumentWorkflow.Input? {

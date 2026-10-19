@@ -183,15 +183,15 @@ final class CardStore {
             folders: company.flatMap(folders(for:)),
             running: documents?.running ?? [:],
             failures: documents?.failures ?? [:],
-            unavailableReason: unavailableReason(kind, company: company)
+            unavailableReason: unavailableReason(company: company)
         )
     }
 
-    private func unavailableReason(_ kind: TaskKind, company: String?) -> String? {
+    private func unavailableReason(company: String?) -> String? {
         if company == nil { return "회사를 먼저 확인하세요" }
         // 수동 카드는 공고 원문이 없어 분석 · 서류를 요청할 수 없다 (APP-018)
         if model.page == nil { return "공고 원문이 없어 지정 사이트 공고에서만 쓸 수 있습니다" }
-        return documents?.blockedReason(for: kind)
+        return nil
     }
 
     private func resetView() {

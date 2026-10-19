@@ -235,6 +235,40 @@ struct DocumentWorkflowTests {
         #expect(flow.phase == .reviewing)
         #expect(flow.handle(.reopen(input(.resume), snapshot(analysis: true))).isEmpty)
     }
+
+    @Test("이력서가 보낸 분석을 자소서가 함께 기다리면 분석 요청은 1건이고, 분석이 끝나면 둘 다 초안을 요청한다")
+    func joinAnalysis() throws {
+        var resume = DocumentWorkflow(idPrefix: "r")
+        var coverLetter = DocumentWorkflow(idPrefix: "c")
+        let first = resume.handle(.start(input(.resume), snapshot()))
+        let analysisID = try #require({ if case let .analyzing(id) = resume.phase { return id } else { return nil } }())
+        #expect(first.count == 1)
+        #expect(coverLetter.handle(.join(input(.coverLetter), snapshot(), analysisID: analysisID)).isEmpty)
+        #expect(coverLetter.phase == .analyzing(requestID: analysisID))
+
+        let analyzed = snapshot(analysis: true)
+        let drafts = resume.handle(.files(analyzed)) + coverLetter.handle(.files(analyzed))
+        #expect(drafts.count == 2)
+        #expect(resume.phase == .drafting(requestID: "r-2"))
+        #expect(coverLetter.phase == .drafting(requestID: "c-1"))
+    }
+
+    @Test("함께 기다리던 분석이 실패하면 둘 다 실패로 멈춘다")
+    func joinAnalysisFailure() throws {
+        var coverLetter = DocumentWorkflow(idPrefix: "c")
+        _ = coverLetter.handle(.join(input(.coverLetter), snapshot(), analysisID: "r-1"))
+        let reply = try #require(SessionReply.parse("[채우미 회신] id=r-1 결과=실패\n사유: 공고 원문 부족"))
+        _ = coverLetter.handle(.reply(reply))
+        guard case let .failed(failure) = coverLetter.phase else { Issue.record("\(coverLetter.phase)"); return }
+        #expect(failure.step == .analysis)
+    }
+
+    @Test("분석이 이미 있으면 함께 기다리지 않고 바로 초안")
+    func joinWhenAnalyzed() {
+        var coverLetter = DocumentWorkflow(idPrefix: "c")
+        _ = coverLetter.handle(.join(input(.coverLetter), snapshot(analysis: true), analysisID: "r-1"))
+        #expect(coverLetter.phase == .drafting(requestID: "c-1"))
+    }
 }
 
 @Suite("진행 단계 이름")
