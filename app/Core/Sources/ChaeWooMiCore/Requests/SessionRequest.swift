@@ -55,7 +55,7 @@ public enum SessionRequest: Equatable, Sendable {
         case let .coverLetterDraft(company, url, _, questions, _):
             ["회사: \(company)", "공고 주소: \(url)", "문항:"] + questions.enumerated().map { $1.line(number: $0 + 1) }
         case let .edit(company, _, path, command, edited):
-            ["회사: \(company)", "초안: \(path)", RequestText.edited(edited), "수정 명령: \(RequestText.oneLine(command))"]
+            ["회사: \(company)", "초안: \(path)", RequestText.edited(edited)] + RequestText.command(command)
         case let .pdf(company, _, path, edited):
             ["회사: \(company)", "초안: \(path)", RequestText.edited(edited)]
         case let .record(company, role, platform, submitted):
@@ -157,6 +157,16 @@ enum RequestText {
     }
 
     /// 항목 값은 한 줄로 (줄바꿈이 다음 항목처럼 읽히지 않게)
+    /// 수정 명령. 한 줄이면 `수정 명령: …`, 여러 줄(Shift+Enter)이면 줄을 살려 두 칸 들여 쓴다 —
+    /// 들여 쓴 줄은 `회신:` · `[채우미 회신]` 같은 줄로 읽히지 않는다
+    static func command(_ text: String) -> [String] {
+        let lines = text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard lines.count > 1 else { return ["수정 명령: \(oneLine(text))"] }
+        return ["수정 명령:"] + lines.map { "  \($0)" }
+    }
+
     static func oneLine(_ text: String) -> String {
         text.split(whereSeparator: \.isNewline).joined(separator: " ").trimmingCharacters(in: .whitespaces)
     }
