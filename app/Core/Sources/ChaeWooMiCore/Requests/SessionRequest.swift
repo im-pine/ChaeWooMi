@@ -156,7 +156,6 @@ enum RequestText {
         "사용자 직접 수정: \(edited ? "있음" : "없음")"
     }
 
-    /// 항목 값은 한 줄로 (줄바꿈이 다음 항목처럼 읽히지 않게)
     /// 수정 명령. 한 줄이면 `수정 명령: …`, 여러 줄(Shift+Enter)이면 줄을 살려 두 칸 들여 쓴다 —
     /// 들여 쓴 줄은 `회신:` · `[채우미 회신]` 같은 줄로 읽히지 않는다
     static func command(_ text: String) -> [String] {
@@ -167,6 +166,7 @@ enum RequestText {
         return ["수정 명령:"] + lines.map { "  \($0)" }
     }
 
+    /// 항목 값은 한 줄로 (줄바꿈이 다음 항목처럼 읽히지 않게)
     static func oneLine(_ text: String) -> String {
         text.split(whereSeparator: \.isNewline).joined(separator: " ").trimmingCharacters(in: .whitespaces)
     }
