@@ -83,13 +83,21 @@ private struct CommandPane: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack {
-                TextField("수정할 내용을 입력하세요", text: $input, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(1...4)
+                // 여러 줄 편집기: Shift+Enter는 커서 자리에 줄바꿈 (사용자 요청 2026-10-19).
+                // 한 줄 입력칸(TextField)은 한글 조합 중 Shift+Enter를 Enter와 구분하지 못해 바로 전송했다 (실측)
+                TextEditor(text: $input)
+                    .font(.body)
+                    .scrollContentBackground(.hidden)
+                    .padding(4)
+                    .frame(height: 64)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(CardTheme.border))
+                    .overlay(alignment: .topLeading) { placeholder }
+                    .accessibilityLabel("수정할 내용을 입력하세요")
                     .focused($inputFocused)
-                    // Enter는 언제나 전송 — 키를 여기서 소비해 승인 등 다른 곳으로 가지 않는다 (사용자 보고).
-                    // Shift+Enter도 전송: 한글 조합 중에는 입력기가 조합을 마치며 Enter를 넘겨 줄바꿈과 구분되지 않았다 (실측)
-                    .onKeyPress(.return, phases: .down) { _ in
+                    // Enter는 전송 — 키를 여기서 소비해 승인 등 다른 곳으로 가지 않는다 (사용자 보고). Shift+Enter는 편집기에 넘긴다
+                    .onKeyPress(.return, phases: .down) { press in
+                        guard !press.modifiers.contains(.shift) else { return .ignored }
                         send()
                         return .handled
                     }
@@ -99,6 +107,15 @@ private struct CommandPane: View {
         .padding(16)
         // 모달을 열면 바로 입력칸에
         .onAppear { inputFocused = true }
+    }
+
+    @ViewBuilder private var placeholder: some View {
+        if input.isEmpty {
+            Text("수정할 내용을 입력하세요 (Shift+Enter 줄바꿈)")
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 9).padding(.vertical, 4)
+                .allowsHitTesting(false)
+        }
     }
 
     /// 처리 중에는 보내지 않는다 (DOC-027)
