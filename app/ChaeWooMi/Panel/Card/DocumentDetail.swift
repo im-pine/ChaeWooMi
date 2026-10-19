@@ -13,23 +13,30 @@ struct DocumentDetail: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if let progress { Label(progress, systemImage: "hourglass").foregroundStyle(.secondary) }
+            ForEach(progress, id: \.self) { Label($0, systemImage: "hourglass").foregroundStyle(.secondary) }
             failures
             analysisResult
             ForEach([DocumentKind.resume, .coverLetter], id: \.self) { kind in resultFiles(kind) }
         }
     }
 
-    /// 진행 상세: 지금 어느 단계인지만 짧게
-    private var progress: String? {
-        if documents.analysis.requestID != nil { return "공고 분석 중" }
-        switch documents.workflow.phase {
-        case .analyzing: return "공고 분석 후 문서를 만듭니다"
-        case .drafting: return "초안 작성 중"
-        case .commanding: return "수정 요청 처리 중"
-        case .generatingPDF: return "PDF 생성 중"
-        default: return nil
+    /// 진행 상세: 지금 어느 단계인지만 짧게. 이력서 · 자소서가 함께 진행되면 줄마다
+    private var progress: [String] {
+        if documents.analysis.requestID != nil { return ["공고 분석 중"] }
+        return DocumentKind.allCases.compactMap { kind in
+            let step: String? = switch documents.workflow(kind).phase {
+            case .analyzing: "공고 분석 후 문서를 만듭니다"
+            case .drafting: "초안 작성 중"
+            case .commanding: "수정 요청 처리 중"
+            case .generatingPDF: "PDF 생성 중"
+            default: nil
+            }
+            return step.map { "\(Self.label(kind)) · \($0)" }
         }
+    }
+
+    private static func label(_ kind: DocumentKind) -> String {
+        kind == .resume ? "이력서" : "자기소개서"
     }
 
     @ViewBuilder private var failures: some View {
@@ -41,13 +48,16 @@ struct DocumentDetail: View {
                 Button("다시 분석") { documents.retryAnalysis(supplement: supplement.isEmpty ? nil : supplement) }
             }
         }
-        if case let .failed(failure) = documents.workflow.phase {
-            VStack(alignment: .leading, spacing: 4) {
-                Label(failure.reason, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
-                if failure.step == .analysis {
-                    TextField("보완할 내용", text: $supplement).textFieldStyle(.roundedBorder)
+        ForEach(DocumentKind.allCases, id: \.self) { kind in
+            if case let .failed(failure) = documents.workflow(kind).phase {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("\(Self.label(kind)) · \(failure.reason)", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    if failure.step == .analysis {
+                        TextField("보완할 내용", text: $supplement).textFieldStyle(.roundedBorder)
+                    }
+                    Button("다시 시도") { documents.retry(kind, supplement: supplement.isEmpty ? nil : supplement) }
                 }
-                Button("다시 시도") { documents.retry(supplement: supplement.isEmpty ? nil : supplement) }
             }
         }
     }

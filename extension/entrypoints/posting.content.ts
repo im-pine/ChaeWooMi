@@ -89,6 +89,11 @@ export default defineContentScript({
   runAt: 'document_idle',
   async main(ctx) {
     const config = await currentConfig();
+    // iframe 안(사람인 입사지원 레이어 등)에서는 지원 완료 화면만 본다. 공고 · 지원 버튼은 맨 바깥 페이지 기준
+    if (window !== window.top) {
+      watchCompletion(config, ctx);
+      return;
+    }
     scan(config, ctx);
     watchApplyButton(config, ctx);
     watchCompletion(config, ctx);

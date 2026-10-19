@@ -92,6 +92,8 @@ async function registerPostingScript() {
       matches: granted,
       js: ['content-scripts/posting.js'],
       runAt: 'document_idle',
+      // 사람인은 지원 완료 안내를 공고 위 레이어의 iframe(`#quick_apply_layer_frame`)에 띄운다 (HIS-017, 실측 누락)
+      allFrames: true,
     },
   ]);
 }

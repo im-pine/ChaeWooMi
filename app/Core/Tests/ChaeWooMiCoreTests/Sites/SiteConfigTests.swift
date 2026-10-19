@@ -71,6 +71,20 @@ struct SiteConfigStoreTests {
         #expect(try SiteConfig.decode(written) == .defaultConfig)
     }
 
+    @Test("예전에 복사된 파일에도 새 기본 완료 문구가 더해지고, 파일에 직접 넣은 문구는 남는다")
+    func defaultCompletionMerged() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        var old = SiteConfig.defaultConfig
+        old.sites[0].completeTexts = ["지원이 완료되었습니다", "가상 완료 문구"]
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try JSONEncoder().encode(old).write(to: file)
+        let texts = SiteConfigStore.load(from: file).config.sites[0].completeTexts
+        #expect(texts.first == "지원이 완료되었습니다")
+        #expect(texts.contains("가상 완료 문구"))
+        #expect(texts.contains("입사지원 완료!"))
+        #expect(texts.filter { $0 == "지원이 완료되었습니다" }.count == 1)
+    }
+
     @Test("파일에 새 플랫폼을 더하면 코드 수정 없이 그 설정을 쓴다 (QA-063)")
     func addedPlatform() throws {
         defer { try? FileManager.default.removeItem(at: folder) }

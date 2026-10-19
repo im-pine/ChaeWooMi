@@ -50,10 +50,12 @@ public enum SessionRequest: Equatable, Sendable {
                 + (supplement.map { ["사용자 보완: \(RequestText.oneLine($0))"] } ?? [])
         case let .resumeDraft(company, url, _, _):
             ["회사: \(company)", "공고 주소: \(url)"]
+        case let .coverLetterDraft(company, url, _, questions, _) where questions.isEmpty:
+            ["회사: \(company)", "공고 주소: \(url)", CoverLetterQuestion.noQuestionsLine]
         case let .coverLetterDraft(company, url, _, questions, _):
             ["회사: \(company)", "공고 주소: \(url)", "문항:"] + questions.enumerated().map { $1.line(number: $0 + 1) }
         case let .edit(company, _, path, command, edited):
-            ["회사: \(company)", "초안: \(path)", RequestText.edited(edited), "수정 명령: \(RequestText.oneLine(command))"]
+            ["회사: \(company)", "초안: \(path)", RequestText.edited(edited)] + RequestText.command(command)
         case let .pdf(company, _, path, edited):
             ["회사: \(company)", "초안: \(path)", RequestText.edited(edited)]
         case let .record(company, role, platform, submitted):
@@ -86,7 +88,7 @@ public enum SessionRequest: Equatable, Sendable {
     }
 }
 
-/// 자기소개서 문항 (DOC-005 · DOC-006)
+/// 자기소개서 문항 (DOC-005 · DOC-006). 기업이 묻는 문항은 있을 때만 — 없어도 자소서를 요청한다 (사용자 요청 2026-10-19)
 public struct CoverLetterQuestion: Equatable, Sendable {
     public let text: String
     /// 글자수 제한. 없으면 강제로 정하지 않는다
@@ -99,16 +101,23 @@ public struct CoverLetterQuestion: Equatable, Sendable {
         self.includesSpaces = includesSpaces
     }
 
+    /// 문항이 없을 때 요청에 넣는 지시. 어떻게 쓸지는 APPLICATION 세션이 정한다
+    static let noQuestionsLine =
+        "문항: 없음 — 기본 자기소개서 형태에, 공고 분석 내용을 바탕으로 어필할 수 있는 경험을 추가 항목으로 녹여 쓴다"
+
     public enum Problem: Equatable, Sendable {
-        case noQuestions
         case emptyQuestion(Int)
         case invalidLimit(Int)
     }
 
-    /// 문항 목록 검사. 문항 번호는 1부터
+    /// 입력한 문항만: 문항 · 글자수를 모두 비운 칸은 문항이 아니다 (빈 목록이면 문항 없이 요청)
+    public static func entered(_ questions: [CoverLetterQuestion]) -> [CoverLetterQuestion] {
+        questions.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.limit != nil }
+    }
+
+    /// 문항 목록 검사. 문항 번호는 1부터. 빈 목록은 문제가 아니다
     public static func problems(_ questions: [CoverLetterQuestion]) -> [Problem] {
-        guard !questions.isEmpty else { return [.noQuestions] }
-        return questions.enumerated().flatMap { index, question -> [Problem] in
+        questions.enumerated().flatMap { index, question -> [Problem] in
             var problems: [Problem] = []
             if question.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 problems.append(.emptyQuestion(index + 1))
@@ -145,6 +154,16 @@ enum RequestText {
 
     static func edited(_ edited: Bool) -> String {
         "사용자 직접 수정: \(edited ? "있음" : "없음")"
+    }
+
+    /// 수정 명령. 한 줄이면 `수정 명령: …`, 여러 줄(Shift+Enter)이면 줄을 살려 두 칸 들여 쓴다 —
+    /// 들여 쓴 줄은 `회신:` · `[채우미 회신]` 같은 줄로 읽히지 않는다
+    static func command(_ text: String) -> [String] {
+        let lines = text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard lines.count > 1 else { return ["수정 명령: \(oneLine(text))"] }
+        return ["수정 명령:"] + lines.map { "  \($0)" }
     }
 
     /// 항목 값은 한 줄로 (줄바꿈이 다음 항목처럼 읽히지 않게)

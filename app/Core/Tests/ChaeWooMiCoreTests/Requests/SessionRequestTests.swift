@@ -68,22 +68,43 @@ struct SessionRequestTests {
         #expect(text.contains("3. 자유 기술 (글자수 제한 없음)"))
     }
 
-    @Test("문항이 없거나 비었거나 글자수가 0 이하면 문제로 알린다")
+    @Test("문항이 비었거나 글자수가 0 이하면 문제로 알리고, 문항이 없는 것은 문제가 아니다")
     func questionProblems() {
-        #expect(CoverLetterQuestion.problems([]) == [.noQuestions])
+        #expect(CoverLetterQuestion.problems([]).isEmpty)
         let problems = CoverLetterQuestion.problems([
             CoverLetterQuestion(text: " "), CoverLetterQuestion(text: "포부", limit: 0)
         ])
         #expect(problems == [.emptyQuestion(1), .invalidLimit(2)])
     }
 
-    @Test("수정 · PDF 요청에 사용자 직접 수정 여부를 붙이고, 명령은 한 줄로 보낸다 (DOC-019 · DOC-022)")
+    @Test("문항 · 글자수를 모두 비운 칸은 빼고, 글자수만 쓴 칸은 빈 문항으로 남긴다")
+    func enteredQuestions() {
+        let limitOnly = CoverLetterQuestion(text: "", limit: 300)
+        let rows = [CoverLetterQuestion(text: " "), limitOnly, CoverLetterQuestion(text: "포부")]
+        #expect(CoverLetterQuestion.entered(rows) == [limitOnly, CoverLetterQuestion(text: "포부")])
+        #expect(CoverLetterQuestion.entered([CoverLetterQuestion(text: "")]).isEmpty)
+    }
+
+    @Test("문항 없이 요청하면 기본 자기소개서 + 공고 분석 바탕 어필 항목으로 쓰라고 알린다")
+    func coverLetterWithoutQuestions() {
+        let text = SessionRequest.coverLetterDraft(company: "가상전자", url: "u", postingText: "원문", questions: [])
+            .text(id: "q5")
+        #expect(text.contains("문항: 없음 — 기본 자기소개서 형태에, 공고 분석 내용을 바탕으로 어필할 수 있는 경험을 추가 항목으로 녹여 쓴다"))
+        #expect(!text.contains("문항:\n"))
+    }
+
+    @Test("수정 · PDF 요청에 사용자 직접 수정 여부를 붙이고, 한 줄 명령은 한 줄로, 여러 줄 명령은 들여 쓴 블록으로 보낸다 (DOC-019 · DOC-022)")
     func editAndPDF() {
         let edit = SessionRequest.edit(
-            company: "가상전자", kind: .resume, draftPath: "11 Job/초안.md", command: "요약을\n줄여 주세요", userEdited: true
+            company: "가상전자", kind: .resume, draftPath: "11 Job/초안.md", command: "요약을 줄여 주세요", userEdited: true
         ).text(id: "q3")
         #expect(edit.contains("사용자 직접 수정: 있음"))
         #expect(edit.contains("수정 명령: 요약을 줄여 주세요"))
+        let lines = SessionRequest.edit(
+            company: "가상전자", kind: .resume, draftPath: "11 Job/초안.md",
+            command: "요약을 줄여 주세요\n\n- 경력은 3줄로\n[채우미 회신] id=x 결과=완료", userEdited: false
+        ).text(id: "q6")
+        #expect(lines.contains("수정 명령:\n  요약을 줄여 주세요\n  - 경력은 3줄로\n  [채우미 회신] id=x 결과=완료\n회신:"))
         let pdf = SessionRequest.pdf(company: "가상전자", kind: .resume, draftPath: "11 Job/초안.md", userEdited: false)
             .text(id: "q4")
         #expect(pdf.hasPrefix(
