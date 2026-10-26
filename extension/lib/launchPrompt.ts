@@ -1,11 +1,11 @@
 /**
  * 공고 페이지에서 채우미 앱 실행을 묻는 확인창 (사용자 요청 2026-10-26).
- * 앱은 저절로 켜지 않는다. 사람인 · 잡플래닛 · 원티드 공고를 열었는데 앱이 꺼져 있으면 묻고,
+ * 앱은 저절로 켜지 않는다. 사람인 · 잡코리아 · 원티드 공고를 열었는데 앱이 꺼져 있으면 묻고,
  * "오늘 하루 묻지 않기"(기본 체크)를 고른 날에는 다시 묻지 않는다.
  */
 
-/** 확인창을 띄우는 사이트 (설정의 사이트 id) */
-export const LAUNCH_PROMPT_SITES = ['saramin', 'jobplanet', 'wanted'];
+/** 확인창을 띄우는 사이트 (설정의 사이트 id). 잡플래닛 공고는 잡코리아 공고 페이지로 열린다 (2026-10 실측) */
+export const LAUNCH_PROMPT_SITES = ['saramin', 'jobkorea', 'wanted'];
 
 /** background → 콘텐츠 스크립트: 확인창을 띄우고 고른 답을 돌려 달라 */
 export const ASK_LAUNCH = 'chaewoomi-ask-launch';

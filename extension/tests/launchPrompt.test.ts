@@ -6,14 +6,14 @@ import { showLaunchDialog } from '@/lib/launchDialog';
 const base = { site: 'saramin', appNotRunning: true, skippedDay: undefined, today: '2026-10-26' };
 
 describe('앱 실행 확인창을 띄울지', () => {
-  it('앱이 꺼져 있고 사람인 · 잡플래닛 · 원티드 공고면 묻는다', () => {
+  it('앱이 꺼져 있고 사람인 · 잡코리아 · 원티드 공고면 묻는다', () => {
     expect(shouldAskLaunch(base)).toBe(true);
-    expect(shouldAskLaunch({ ...base, site: 'jobplanet' })).toBe(true);
+    expect(shouldAskLaunch({ ...base, site: 'jobkorea' })).toBe(true);
     expect(shouldAskLaunch({ ...base, site: 'wanted' })).toBe(true);
   });
 
   it('다른 사이트 공고, 앱이 켜져 있음, 오늘 묻지 않기를 고른 날에는 묻지 않는다', () => {
-    expect(shouldAskLaunch({ ...base, site: 'jobkorea' })).toBe(false);
+    expect(shouldAskLaunch({ ...base, site: 'example' })).toBe(false);
     expect(shouldAskLaunch({ ...base, appNotRunning: false })).toBe(false);
     expect(shouldAskLaunch({ ...base, skippedDay: '2026-10-26' })).toBe(false);
   });
