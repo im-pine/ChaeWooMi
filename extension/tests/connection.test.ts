@@ -122,12 +122,13 @@ describe('앱이 보낸 설정', () => {
     expect(rescans).toEqual([false, true]);
   });
 
-  it('스스로 다시 연결할 때는 인사에 quiet을 붙인다 (호스트가 꺼진 앱을 실행하지 않음)', () => {
-    const { connection, ports } = setup();
-    connection.connect(true);
-    expect(ports[0]?.posted[0]).toEqual({ type: 'hello', extensionVersion: '0.1.0', quiet: true });
+  it('호스트가 앱이 꺼져 있다고 알리면 앱 꺼짐 상태로, 앱이 켜져 ack가 오면 연결됨으로 바꾼다', () => {
+    const { connection, ports, states } = setup();
+    connection.connect();
+    ports[0]?.receive({ type: 'appWaiting' });
+    expect(states.at(-1)).toEqual({ kind: 'appNotRunning' });
     expect(connection.isConnected()).toBe(true);
-    ports[0]?.drop();
-    expect(connection.isConnected()).toBe(false);
+    ports[0]?.receive({ type: 'ack', appVersion: '1.0' });
+    expect(states.at(-1)).toEqual({ kind: 'connected', appVersion: '1.0' });
   });
 });

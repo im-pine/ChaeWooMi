@@ -6,11 +6,11 @@ struct ChaeWooMiApp: App {
 
     var body: some Scene {
         MenuBarExtra("채우미", systemImage: "leaf") {
-            LauncherMenu(settings: appDelegate.settings, launcher: appDelegate.launcher)
+            LauncherMenu(launcher: appDelegate.launcher)
             Button("설정…") { appDelegate.settingsWindow.show() }
                 .keyboardShortcut(",")
             Divider()
-            QuitMenu(settings: appDelegate.settings)
+            QuitMenu()
         }
     }
 }

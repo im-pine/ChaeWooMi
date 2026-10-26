@@ -33,7 +33,7 @@
 | 판정 로직 | Swift Package (`ChaeWooMiCore`) | UI와 분리해 회사명 · 재지원 판정을 테스트로 검증 |
 | 세션 연동 | Claude Code 세션 간 메시지 (`claude -p` 중계 세션 + `SendMessage`) | 이미 열린 세션에 플래그 없이 요청 · 회신 |
 | 브라우저 확장 | Chrome MV3 · TypeScript · WXT | 지정 도메인에만 권한, 페이지 이벤트 기반 감지 |
-| 확장 ↔ 앱 | Chrome Native Messaging | 공식 통로, 확장이 연결하면 Chrome이 호스트를 실행해 앱 자동 실행 |
+| 확장 ↔ 앱 | Chrome Native Messaging | 공식 통로. 앱은 사용자가 켜고, 꺼져 있으면 호스트가 켜질 때까지 기다린다 (공고 페이지에서 하루 한 번 실행 확인창) |
 | 프로젝트 생성 | XcodeGen | Xcode 프로젝트를 텍스트(`project.yml`)로 관리해 리뷰 · 병렬 작업 충돌 방지 |
 | 테스트 | Swift Testing · Vitest | 판정 로직 · 확장 로직 단위 테스트 |
 | 품질 · CI | SwiftLint · ESLint · Prettier · GitHub Actions | 함수 길이 · 복잡도 신호, PR마다 자동 검사 |

@@ -5,6 +5,8 @@ export const NATIVE_HOST = 'com.impine.chaewoomi';
 export type ConnectionState =
   | { kind: 'connecting' }
   | { kind: 'connected'; appVersion: string }
+  /** 호스트는 붙었지만 앱이 꺼져 있음. 사용자가 앱을 켜면 바로 연결된다 */
+  | { kind: 'appNotRunning' }
   | { kind: 'hostNotInstalled' }
   | { kind: 'forbidden' }
   | { kind: 'disconnected'; reason: string };
@@ -27,6 +29,8 @@ export function describeState(state: ConnectionState): string {
       return '채우미 앱에 연결 중';
     case 'connected':
       return `채우미 앱 연결됨 (v${state.appVersion})`;
+    case 'appNotRunning':
+      return '채우미 앱이 꺼져 있습니다. 앱을 실행하면 바로 연결됩니다';
     case 'hostNotInstalled':
       return '채우미 앱이 설치되지 않았거나 브라우저 연결이 등록되지 않았습니다. 앱을 한 번 실행하세요';
     case 'forbidden':

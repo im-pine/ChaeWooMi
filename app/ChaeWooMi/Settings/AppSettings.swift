@@ -12,11 +12,6 @@ final class AppSettings {
         static let sessionRoster = "sessionRoster"
     }
 
-    /// 공고 페이지에서 자동 실행 (메뉴바 스위치, APP-005). 호스트가 같은 키를 읽는다
-    var autoLaunchFromBrowser: Bool {
-        didSet { defaults.set(autoLaunchFromBrowser, forKey: AutoLaunchPolicy.key) }
-    }
-
     private let defaults: UserDefaults
 
     /// 항목별 저장 위치 · 이름 규칙 (2026-10-18). 처음에는 예전 볼트 폴더에서 찾을 수 있는 만큼 옮긴다
@@ -43,7 +38,6 @@ final class AppSettings {
             .flatMap { try? JSONDecoder().decode(VaultPaths.self, from: $0) }
             ?? legacy.flatMap { VaultPaths.detected(vault: URL(fileURLWithPath: $0, isDirectory: true)) }
             ?? VaultPaths(statusFile: "", postingFolder: "", outputFolder: "", ownerName: "")
-        autoLaunchFromBrowser = AutoLaunchPolicy.isEnabled(defaults)
         sessionRoster = defaults.data(forKey: Key.sessionRoster)
             .flatMap { try? JSONDecoder().decode(SessionRoster.self, from: $0) }?
             .migratingLegacyDefaults() ?? .defaults
