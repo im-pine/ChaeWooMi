@@ -8,6 +8,8 @@ import {
 } from '@/lib/postingWatch';
 import { DEFAULT_CONFIG, configProblems, hostPatterns, type SiteConfig } from '@/lib/siteConfig';
 import { sameDocument } from '@/lib/tabPages';
+import { showLaunchDialog } from '@/lib/launchDialog';
+import { ASK_LAUNCH } from '@/lib/launchPrompt';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 
 async function currentConfig(): Promise<SiteConfig> {
@@ -98,8 +100,15 @@ export default defineContentScript({
     watchApplyButton(config, ctx);
     watchCompletion(config, ctx);
     // "지원 이력 확인" 버튼: 다시 읽고 응답한다 (응답이 없으면 background가 이 스크립트를 다시 넣는다)
-    browser.runtime.onMessage.addListener((message: unknown) => {
-      if (message !== RESCAN || ctx.isInvalid) return undefined;
+    // 앱이 꺼져 있을 때 앱 실행 확인창 (background가 띄울지 정한다)
+    browser.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+      if (ctx.isInvalid) return undefined;
+      // 고른 답은 sendResponse로 돌려준다. Promise를 돌려주면 Chrome 버전에 따라 답이 비어 온다 (Chromium 131 실측)
+      if (message === ASK_LAUNCH) {
+        void showLaunchDialog(document).then(sendResponse);
+        return true;
+      }
+      if (message !== RESCAN) return undefined;
       scan(config, ctx);
       return Promise.resolve(true);
     });

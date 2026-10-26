@@ -1,11 +1,18 @@
 import { createConnection } from '@/lib/connection';
 import type { ConnectionState } from '@/lib/native';
-import type { ExtensionToApp } from '@/lib/protocol';
+import type { ExtensionToApp, JobPageMessage } from '@/lib/protocol';
 import { RESCAN, type PageReport } from '@/lib/postingWatch';
 import { POSTING_SCRIPT_ID, splitByPermission } from '@/lib/registration';
 import { configProblems, DEFAULT_CONFIG, postingSite, type SiteConfig } from '@/lib/siteConfig';
 import { AUTO_RESCAN_DELAY_MS, AutoRescan } from '@/lib/autoRescan';
 import { TabPages, type TabPagesState } from '@/lib/tabPages';
+import {
+  ASK_LAUNCH,
+  dayKey,
+  shouldAskLaunch,
+  SKIPPED_DAY_KEY,
+  type LaunchAnswer,
+} from '@/lib/launchPrompt';
 
 let state: ConnectionState = { kind: 'connecting' };
 let tabs = new TabPages();
@@ -17,6 +24,9 @@ let ready: Promise<void> = Promise.resolve();
 const QUICK_RETRY_MS = 3000;
 const RECONNECT_ALARM = 'chaewoomi-reconnect';
 let quickRetried = false;
+/** 앱 실행 확인창: 떠 있는 동안 또 띄우지 않고, 이번에 물어본 공고 주소는 다시 묻지 않는다 (다시 읽기 · 새로고침) */
+let askingLaunch = false;
+const askedLaunchUrls = new Set<string>();
 
 /** 탭별 공고 기억을 저장한다. service worker가 쉬다 다시 시작되면 메모리가 비어 이전에 연 탭의 카드를 잃었다 */
 const saveTabs = () =>
@@ -100,7 +110,7 @@ async function registerPostingScript() {
 
 /**
  * 채우미 앱에 Native Messaging으로 연결한다.
- * 연결하면 Chrome이 호스트를 실행하고, 호스트가 꺼진 앱을 실행한다 (APP-019).
+ * 연결하면 Chrome이 호스트를 실행한다. 앱이 꺼져 있으면 호스트는 앱을 실행하지 않고 켜질 때까지 기다린다 (appNotRunning).
  * 빌드할 때 이 모듈을 불러오므로 브라우저 API는 함수 안에서만 부른다.
  */
 function createAppConnection() {
@@ -118,11 +128,19 @@ function createAppConnection() {
           const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
           if (tab?.id !== undefined) autoRescanSoon(tab.id);
         });
+      } else if (next.kind === 'appNotRunning') {
+        // 공고 보고가 앱 꺼짐 알림보다 먼저 왔으면 지금 보고 있는 공고에서 묻는다
+        void ready.then(async () => {
+          const page = tabs.current();
+          const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
+          if (page.type === 'jobPage' && tab?.id !== undefined)
+            await askLaunch(tab.id, page, connection.post);
+        });
       } else if (next.kind !== 'connecting' && !quickRetried) {
         // 끊기면 3초 뒤 한 번 조용히 다시 연결 (앱을 다시 켰거나 바꿔 설치한 경우). 그다음은 30초 알람
         quickRetried = true;
         setTimeout(() => {
-          if (!connection.isConnected()) connection.connect(true);
+          if (!connection.isConnected()) connection.connect();
         }, QUICK_RETRY_MS);
       }
     },
@@ -132,6 +150,34 @@ function createAppConnection() {
     onRescan: (reload) => void ready.then(() => rescanActiveTab(connection.post, reload)),
   });
   return connection;
+}
+
+/**
+ * 앱이 꺼져 있을 때 확인창 사이트 공고를 열면 그 탭에 앱 실행 확인창을 띄운다.
+ * "열기"면 호스트에 앱 실행을 부탁하고, "오늘 하루 묻지 않기"를 골랐으면 오늘은 다시 묻지 않는다
+ */
+async function askLaunch(
+  tabId: number,
+  page: JobPageMessage,
+  post: (message: ExtensionToApp) => void,
+) {
+  if (askingLaunch || askedLaunchUrls.has(page.url)) return;
+  const today = dayKey(new Date());
+  const skippedDay = (await browser.storage.local.get(SKIPPED_DAY_KEY))[SKIPPED_DAY_KEY];
+  const appNotRunning = state.kind === 'appNotRunning';
+  if (!shouldAskLaunch({ site: page.site, appNotRunning, skippedDay, today })) return;
+  askingLaunch = true;
+  askedLaunchUrls.add(page.url);
+  try {
+    const answer = (await browser.tabs.sendMessage(tabId, ASK_LAUNCH)) as LaunchAnswer | undefined;
+    if (!answer) return;
+    if (answer.skipToday) await browser.storage.local.set({ [SKIPPED_DAY_KEY]: today });
+    if (answer.open) post({ type: 'launchApp' });
+  } catch {
+    // 확장을 새로고침하기 전에 연 탭 등 콘텐츠 스크립트가 없으면 묻지 않는다
+  } finally {
+    askingLaunch = false;
+  }
 }
 
 /** 콘텐츠 스크립트 보고 → 보고 있는 탭이면 앱에 보낸다 */
@@ -146,6 +192,7 @@ function handleReport(report: PageReport, tabId: number, post: (message: Extensi
           : tabs.applyButton(tabId, report.covering);
   saveTabs();
   if (message) post(message);
+  if (message && report.kind === 'posting') void askLaunch(tabId, report.page, post);
 }
 
 /** 탭 전환 · 이동 · 닫기를 보고 있는 탭의 공고 상태로 바꿔 앱에 보낸다. 처리는 저장된 기억을 읽은 뒤에 한다 */
@@ -196,10 +243,10 @@ export default defineBackground(() => {
       saveTabs();
     });
   listenTabs(connection.post);
-  // 앱이 꺼졌다 켜져도 사용자가 탭을 옮기기 전에 다시 이어지도록 30초마다 조용히 다시 연결 (꺼진 앱은 실행하지 않음)
+  // 호스트가 끝나 연결이 끊겨도(앱 종료 등) 30초마다 다시 연결한다. 호스트는 앱을 실행하지 않고 켜질 때까지 기다린다
   void browser.alarms.create(RECONNECT_ALARM, { periodInMinutes: 0.5 });
   browser.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === RECONNECT_ALARM && !connection.isConnected()) connection.connect(true);
+    if (alarm.name === RECONNECT_ALARM && !connection.isConnected()) connection.connect();
   });
   browser.permissions.onAdded.addListener(() => void registerPostingScript());
   browser.permissions.onRemoved.addListener(() => void registerPostingScript());

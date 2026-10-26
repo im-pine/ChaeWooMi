@@ -28,8 +28,8 @@ export type ConnectionDeps = {
 export function createConnection(deps: ConnectionDeps) {
   let current: NativePort | null = null;
 
-  /** `quiet`: 확장이 스스로 다시 연결함 → 호스트가 꺼진 앱을 실행하지 않는다 */
-  function connect(quiet = false) {
+  /** 연결하면 Chrome이 호스트를 실행한다. 앱이 꺼져 있으면 호스트가 켜질 때까지 기다린다 (실행하지 않음) */
+  function connect() {
     current?.disconnect();
     deps.onState({ kind: 'connecting' });
     const port = deps.connectNative(NATIVE_HOST);
@@ -38,6 +38,7 @@ export function createConnection(deps: ConnectionDeps) {
       if (port !== current || !isAppToExtension(message)) return;
       if (message.type === 'ack')
         deps.onState({ kind: 'connected', appVersion: message.appVersion });
+      else if (message.type === 'appWaiting') deps.onState({ kind: 'appNotRunning' });
       else if (message.type === 'siteConfig') deps.onConfig(message.config);
       else deps.onRescan(message.reload === true);
     });
@@ -46,16 +47,13 @@ export function createConnection(deps: ConnectionDeps) {
       current = null;
       deps.onState(stateFromDisconnect(deps.lastErrorMessage()));
     });
-    const hello: ExtensionToApp = {
-      type: 'hello',
-      extensionVersion: deps.extensionVersion,
-      ...(quiet ? { quiet: true } : {}),
-    };
+    const hello: ExtensionToApp = { type: 'hello', extensionVersion: deps.extensionVersion };
     port.postMessage(hello);
   }
 
   /**
-   * 앱에 보낸다. 끊겨 있으면(앱을 껐다 켰거나 바꿔 설치함) 먼저 다시 연결한다 — 연결하면 호스트가 앱을 실행한다 (APP-019).
+   * 앱에 보낸다. 끊겨 있으면(앱을 껐다 켰거나 바꿔 설치함) 먼저 다시 연결한다.
+   * 앱이 꺼져 있으면 호스트가 모아 두었다가 앱이 켜지면 넘긴다.
    * 다시 연결하지 않으면 service worker가 다시 시작될 때까지 공고 알림이 모두 버려졌다 (실측)
    */
   function post(message: ExtensionToApp) {

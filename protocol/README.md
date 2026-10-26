@@ -5,7 +5,9 @@ TypeScript(`extension/lib/protocol.ts`)와 Swift(`app/Core`) 테스트가 **같�
 
 | 파일 | 방향 | 뜻 |
 | --- | --- | --- |
-| `examples/hello.json` | 확장 → 앱 | 연결 직후 인사 (확장 버전). 확장이 스스로 다시 연결할 때는 `"quiet": true` → 호스트가 꺼진 앱을 실행하지 않는다 |
+| `examples/hello.json` | 확장 → 앱 | 연결 직후 인사 (확장 버전) |
+| `examples/app-waiting.json` | 호스트 → 확장 | 앱이 꺼져 있어 켜질 때까지 기다리는 중. 호스트는 앱을 실행하지 않고, 그동안 받은 메시지를 모았다가 앱이 켜지면 순서대로 넘긴다 |
+| `examples/launch-app.json` | 확장 → 호스트 | 공고 페이지 확인창에서 "열기"를 고름 → 호스트가 앱을 실행한다 (앱에는 넘기지 않음) |
 | `examples/job-page.json` | 확장 → 앱 | 지정 사이트 공고: 회사명 후보(구조화 데이터 → 메타 → DOM 순, 비면 추출 실패) · 제목 · 공고 원문(없으면 필드 없음). 민감 정보를 걸러 낸 뒤 |
 | `examples/page-left.json` | 확장 → 앱 | 공고가 아닌 페이지 · 다른 탭으로 옮김 (이전 회사 결과 지우기) |
 | `examples/apply-button.json` | 확장 → 앱 | 지원 버튼이 화면 오른쪽 아래 카드 자리를 가리는지 (바뀔 때만) |

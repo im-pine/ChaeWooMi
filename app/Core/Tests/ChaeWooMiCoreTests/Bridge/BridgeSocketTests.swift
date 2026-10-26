@@ -80,29 +80,36 @@ struct BridgeSocketTests {
         host.close()
     }
 
-    @Test("앱이 꺼져 있으면 실행을 부탁하고 소켓이 열리면 연결한다")
-    func launcherStartsApp() async throws {
+    @Test("앱이 꺼져 있으면 실행하지 않고 기다렸다가, 사용자가 켜서 소켓이 열리면 연결한다")
+    func waitsForApp() async throws {
         let path = temporarySocketPath()
         let started = ServerBox()
-        let connection = await HostLauncher.connect(socketPath: path, launchApp: {
-            started.server = try? BridgeServer(path: path)
-        }, timeout: .seconds(2), interval: .milliseconds(50))
+        let waiting = WaitCount()
+        let connecting = Task {
+            await HostLauncher.waitForApp(socketPath: path, interval: .milliseconds(50)) { waiting.count += 1 }
+        }
+        try await Task.sleep(for: .milliseconds(200))
+        started.server = try BridgeServer(path: path)
         defer { started.server?.stop() }
-
-        #expect(started.server != nil)
-        #expect(connection != nil)
+        let connection = await connecting.value
+        connection.close()
+        #expect(waiting.count == 1)
     }
 
-    @Test("앱이 끝내 소켓을 열지 않으면 시간 초과 후 nil")
-    func launcherTimesOut() async {
-        let connection = await HostLauncher.connect(
-            socketPath: temporarySocketPath(),
-            launchApp: {},
-            timeout: .milliseconds(200),
-            interval: .milliseconds(50)
-        )
-        #expect(connection == nil)
+    @Test("앱이 이미 켜져 있으면 기다림 알림 없이 바로 연결한다")
+    func connectsRightAway() async throws {
+        let path = temporarySocketPath()
+        let server = try BridgeServer(path: path)
+        defer { server.stop() }
+        let waiting = WaitCount()
+        let connection = await HostLauncher.waitForApp(socketPath: path) { waiting.count += 1 }
+        connection.close()
+        #expect(waiting.count == 0)
     }
+}
+
+private final class WaitCount: @unchecked Sendable {
+    var count = 0
 }
 
 private final class ServerBox: @unchecked Sendable {

@@ -127,14 +127,39 @@ struct NativeMessageFramingTests {
     }
 }
 
-@Suite("호스트의 앱 실행 판단")
-struct HostLaunchHintTests {
-    @Test("확장이 스스로 다시 연결한 인사(quiet)면 앱을 실행하지 않고, 보통 인사 · 다른 메시지는 실행해도 된다")
-    func quietHello() {
-        #expect(HostLaunchHint.isQuiet(Data(#"{"type":"hello","extensionVersion":"0.2.0","quiet":true}"#.utf8)))
-        #expect(!HostLaunchHint.isQuiet(Data(#"{"type":"hello","extensionVersion":"0.2.0"}"#.utf8)))
-        #expect(!HostLaunchHint.isQuiet(Data(#"{"type":"hello","quiet":false}"#.utf8)))
-        #expect(!HostLaunchHint.isQuiet(Data(#"{"type":"jobPage","quiet":true}"#.utf8)))
-        #expect(!HostLaunchHint.isQuiet(Data("not json".utf8)))
+@Suite("호스트가 직접 주고받는 메시지")
+struct HostCommandTests {
+    @Test("확인창의 열기(launchApp)만 호스트가 앱을 실행하고, 다른 메시지는 앱에 넘긴다")
+    func launchApp() throws {
+        #expect(HostCommand.isLaunchApp(try example("launch-app.json")))
+        #expect(!HostCommand.isLaunchApp(try example("hello.json")))
+        #expect(!HostCommand.isLaunchApp(try example("job-page.json")))
+        #expect(!HostCommand.isLaunchApp(Data("not json".utf8)))
     }
+
+    @Test("앱을 기다리는 알림은 규약 예시와 같다")
+    func appWaiting() throws {
+        let sent = try JSONSerialization.jsonObject(with: HostCommand.appWaiting) as? [String: String]
+        let expected = try JSONSerialization.jsonObject(with: try example("app-waiting.json")) as? [String: String]
+        #expect(sent == expected)
+    }
+
+    @Test("앱에 연결되기 전 메시지는 모아 두었다가 받은 순서대로 넘기고, 그다음부터는 바로 넘긴다")
+    func pendingLines() {
+        let pending = PendingLines()
+        let received = Received()
+        pending.send(Data("1".utf8))
+        pending.send(Data("2".utf8))
+        #expect(received.lines.isEmpty)
+        pending.attach { received.append($0) }
+        pending.send(Data("3".utf8))
+        #expect(received.lines == ["1", "2", "3"])
+    }
+}
+
+private final class Received: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [String] = []
+    var lines: [String] { lock.withLock { stored } }
+    func append(_ data: Data) { lock.withLock { stored.append(String(decoding: data, as: UTF8.self)) } }
 }

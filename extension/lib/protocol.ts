@@ -1,8 +1,8 @@
 /** 확장 ↔ 앱 메시지 규약. 예시는 저장소 루트 `protocol/examples/` (Swift 테스트와 공용). */
 import { configProblems, type SiteConfig } from './siteConfig';
 
-/** 연결 인사. `quiet`: 확장이 스스로 다시 연결한 것 → 호스트가 꺼진 앱을 실행하지 않는다 */
-export type HelloMessage = { type: 'hello'; extensionVersion: string; quiet?: boolean };
+/** 연결 인사 */
+export type HelloMessage = { type: 'hello'; extensionVersion: string };
 
 /**
  * 지정 사이트 공고 (WEB-003 · 004 · 016). 회사명 후보는 구조화 데이터 → 메타 → DOM 순.
@@ -38,8 +38,12 @@ export type ApplyCompleteMessage = {
 /** 다시 읽기 요청을 받았지만 지금 탭이 지정 사이트 공고가 아님 → 앱은 새로고침을 건너뛰고 직접 입력으로 */
 export type NotPostingMessage = { type: 'notPosting' };
 
+/** 공고 페이지 확인창에서 "열기"를 고름 → 호스트가 꺼진 앱을 실행한다 (앱에는 가지 않음) */
+export type LaunchAppMessage = { type: 'launchApp' };
+
 export type ExtensionToApp =
   | HelloMessage
+  | LaunchAppMessage
   | JobPageMessage
   | PageLeftMessage
   | ApplyButtonMessage
@@ -54,7 +58,10 @@ export type SiteConfigMessage = { type: 'siteConfig'; config: SiteConfig };
 /** 지금 보고 있는 탭을 다시 읽어 달라 (카드의 "지원 이력 확인" 버튼). `reload`면 그 탭을 새로고침 (지정 사이트만) */
 export type RescanMessage = { type: 'rescan'; reload?: boolean };
 
-export type AppToExtension = AckMessage | SiteConfigMessage | RescanMessage;
+/** 호스트가 보냄: 앱이 꺼져 있어 켜질 때까지 기다리는 중 (호스트는 앱을 실행하지 않는다) */
+export type AppWaitingMessage = { type: 'appWaiting' };
+
+export type AppToExtension = AckMessage | SiteConfigMessage | RescanMessage | AppWaitingMessage;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -79,9 +86,7 @@ function isJobPage(value: Record<string, unknown>): boolean {
 
 const isOptionalBoolean = (value: unknown) => value === undefined || typeof value === 'boolean';
 
-function isHello(value: Record<string, unknown>): boolean {
-  return typeof value.extensionVersion === 'string' && isOptionalBoolean(value.quiet);
-}
+const isHello = (value: Record<string, unknown>) => typeof value.extensionVersion === 'string';
 
 const isApplyComplete = (value: Record<string, unknown>) =>
   typeof value.site === 'string' &&
@@ -92,6 +97,7 @@ const isApplyComplete = (value: Record<string, unknown>) =>
 /** 메시지 종류별 모양 검사 */
 const EXTENSION_TO_APP: Record<string, (value: Record<string, unknown>) => boolean> = {
   hello: isHello,
+  launchApp: () => true,
   jobPage: isJobPage,
   pageLeft: () => true,
   notPosting: () => true,
@@ -115,5 +121,5 @@ export function isAppToExtension(value: unknown): value is AppToExtension {
   // 틀린 설정은 받지 않고 지금 설정을 그대로 쓴다
   if (value.type === 'siteConfig') return configProblems(value.config).length === 0;
   if (value.type === 'rescan') return isOptionalBoolean(value.reload);
-  return false;
+  return value.type === 'appWaiting';
 }
